@@ -50,8 +50,8 @@ const DRY_RUN_GENERATE = [
   'git init -q -b main',
   'bun install',
   'bun auth:provision',
-  'bunx --bun prettier --write .   (until --check passes)',
-  'bunx --bun jscpd --update-baseline   (source and test baselines)',
+  'bunx --bun prettier --log-level=warn --write .   (until --check passes)',
+  'bunx --bun jscpd --reporters=silent --update-baseline   (source and test baselines)',
   'git add -A && git commit -q -m "chore: initialize <slug> from init-offense"',
 ];
 

@@ -717,6 +717,9 @@ export default [
     files: ['apps/web/src/**/*.{ts,tsx}', 'apps/realtime/src/**/*.ts'],
     ignores: [
       'apps/web/src/server/process-app.ts',
+      // Next inlines NEXT_RUNTIME per bundle only where it is read inline,
+      // which is how the Edge bundle drops the Node-only server graph.
+      'apps/web/src/instrumentation.ts',
       'apps/realtime/src/start.ts',
       '**/*.test.{ts,tsx}',
       '**/*.test-support.{ts,tsx}',

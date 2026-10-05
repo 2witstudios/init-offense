@@ -104,7 +104,14 @@ const MAX_FORMAT_PASSES = 3;
  */
 function formatUntilSettled(context: Context): boolean {
   for (let pass = 1; pass <= MAX_FORMAT_PASSES; pass += 1) {
-    const prettier = (mode: string) => ['--bun', 'prettier', mode, '.'];
+    // Quiet: list only files prettier could not settle, not every file.
+    const prettier = (mode: string) => [
+      '--bun',
+      'prettier',
+      '--log-level=warn',
+      mode,
+      '.',
+    ];
     if (
       !step(
         context,
@@ -135,6 +142,7 @@ function settleStep(context: Context): boolean {
     step(context, 'rebaseline source clones', 'bunx', [
       '--bun',
       'jscpd',
+      '--reporters=silent',
       '--update-baseline',
     ]) &&
     step(context, 'rebaseline test clones', 'bunx', [
@@ -142,11 +150,13 @@ function settleStep(context: Context): boolean {
       'jscpd',
       '--config',
       '.jscpd-tests.json',
+      '--reporters=silent',
       '--update-baseline',
     ]) &&
     step(context, 'format baselines', 'bunx', [
       '--bun',
       'prettier',
+      '--log-level=warn',
       '--write',
       '.jscpd-baseline.json',
       '.jscpd-tests-baseline.json',

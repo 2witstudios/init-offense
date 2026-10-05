@@ -50,11 +50,11 @@ describe('main', () => {
           'git init -q -b main',
           'bun install',
           'bun auth:provision',
-          'bunx --bun prettier --write .',
-          'bunx --bun prettier --check .',
-          'bunx --bun jscpd --update-baseline',
-          'bunx --bun jscpd --config .jscpd-tests.json --update-baseline',
-          'bunx --bun prettier --write .jscpd-baseline.json .jscpd-tests-baseline.json',
+          'bunx --bun prettier --log-level=warn --write .',
+          'bunx --bun prettier --log-level=warn --check .',
+          'bunx --bun jscpd --reporters=silent --update-baseline',
+          'bunx --bun jscpd --config .jscpd-tests.json --reporters=silent --update-baseline',
+          'bunx --bun prettier --log-level=warn --write .jscpd-baseline.json .jscpd-tests-baseline.json',
           'git add -A',
           'git commit -q -m chore: initialize widget-app from init-offense',
           `gh repo create someone/widget-app --private --source ${join(scratch, 'full')} --remote origin`,
@@ -143,11 +143,11 @@ describe('main', () => {
       return { code, prettier, logs };
     };
     const pass = [
-      'bunx --bun prettier --write .',
-      'bunx --bun prettier --check .',
+      'bunx --bun prettier --log-level=warn --write .',
+      'bunx --bun prettier --log-level=warn --check .',
     ];
     const baselines =
-      'bunx --bun prettier --write .jscpd-baseline.json .jscpd-tests-baseline.json';
+      'bunx --bun prettier --log-level=warn --write .jscpd-baseline.json .jscpd-tests-baseline.json';
 
     test('rewrites again while the check still finds changes', () => {
       assert({

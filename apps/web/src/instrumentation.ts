@@ -1,12 +1,13 @@
 import type { Instrumentation } from 'next';
 
 // The app's logger, from validated config, is the one both hooks use. The
-// process edge is imported lazily, keeping this file free of server code.
-const edge = () => import('./server/process-app');
+// process edge is imported lazily, keeping this file free of server code,
+// and each import sits inside its NEXT_RUNTIME check: Next inlines that
+// value per bundle, so the Edge bundle drops the Node-only server graph.
 
 export async function register() {
-  const { isNodeRuntime, processApp } = await edge();
-  if (!isNodeRuntime()) return;
+  if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+  const { processApp } = await import('./server/process-app');
   // Provider-neutral spans bind to the host's OTel provider. Exporters belong to deployment.
   processApp().logger.log(
     'runtime.initialize',
@@ -19,7 +20,8 @@ export const onRequestError: Instrumentation.onRequestError = async (
   request,
   context,
 ) => {
-  const { processApp } = await edge();
+  if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+  const { processApp } = await import('./server/process-app');
   const id = request.headers['x-request-id'];
   processApp().logger.log(
     'request.unhandled',
