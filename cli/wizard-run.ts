@@ -7,7 +7,6 @@ import type { Accounts } from './wizard-accounts';
 import type { Created } from './wizard-create';
 import { act, display, WizardStop, type WizardDeps } from './wizard-deps';
 import {
-  appEnv,
   DEFAULT_PORTS,
   pickPorts,
   setEnv,
@@ -116,7 +115,7 @@ function choosePorts(deps: WizardDeps): Ports {
     (key) => ports[key] !== DEFAULT_PORTS[key],
   );
   deps.log(
-    `  ports: Postgres ${ports.postgres}, Redis ${ports.redis}, app ${ports.app}, realtime ${ports.realtime}` +
+    `  ports: Postgres ${ports.postgres}, Redis ${ports.redis}, app ${ports.app}` +
       (moved.length > 0
         ? ` (moved ${moved.join(', ')}: the default was taken)`
         : ''),
@@ -178,17 +177,12 @@ export async function runLocally(
     throw new WizardStop(
       `Starting the database failed. Check Docker is running, then run: cd ${accounts.target} && bun slot:up`,
     );
-  writeEnv(deps, flags, envPath, appEnv(ports));
   summary(accounts, created, drive, flags.dryRun).forEach((line) =>
     deps.log(line),
   );
   const appUrl = `http://localhost:${ports.app}`;
   deps.log('');
   signInBox(appUrl, accounts.target).forEach((line) => deps.log(line));
-  if (ports.app !== DEFAULT_PORTS.app)
-    deps.log(
-      `(A later \`bun slot:up\` moves the app back to port ${DEFAULT_PORTS.app}; free that port first.)`,
-    );
   const dev = ['bun', 'dev'];
   deps.log(
     `\nStarting the app; your browser opens ${appUrl}/sign-in${drive ? ' and your drive' : ''} once it is ready.`,

@@ -35,6 +35,7 @@ import { deleteNamespace } from '@acme/redis/namespaces';
 import { readEnvValue, rewriteEnv, slotEnvValues } from './slot-env';
 import { e2eRole, serviceRefusal, type Slot } from './slot-model';
 import {
+  APP_PORT_ENV,
   parsePortBlockComment,
   pickPortBlock,
   portBlockComment,
@@ -118,6 +119,8 @@ const envOf = (content: string) =>
       E2E_REDIS_URL: readEnvValue(content, 'E2E_REDIS_URL'),
       TEST_REDIS_URL: readEnvValue(content, 'TEST_REDIS_URL'),
       PORT: readEnvValue(content, 'PORT'),
+      [APP_PORT_ENV]:
+        process.env[APP_PORT_ENV] ?? readEnvValue(content, APP_PORT_ENV),
     },
     {
       [STACK_PORT_ENV.postgres]: readEnvValue(content, STACK_PORT_ENV.postgres),

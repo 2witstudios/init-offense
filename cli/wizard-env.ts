@@ -9,8 +9,21 @@ export const DEFAULT_PORTS = {
   postgres: 15432,
   redis: 6379,
   app: 3000,
-  realtime: 3011,
 } as const;
+
+/**
+ * The ports a main checkout's app port `p` occupies: the app, realtime
+ * (p + 11) and the browser suite (p + 100 … p + 103); see
+ * scripts/slot-ports.ts.
+ */
+const appPortFamily = (app: number): readonly number[] => [
+  app,
+  app + 11,
+  app + 100,
+  app + 101,
+  app + 102,
+  app + 103,
+];
 
 export type Ports = { readonly [K in keyof typeof DEFAULT_PORTS]: number };
 
@@ -36,9 +49,14 @@ export function pickPorts(isFree: (port: number) => boolean): Ports | null {
   const picked: number[] = [];
   const result: Partial<Record<keyof Ports, number>> = {};
   for (const [name, start] of Object.entries(DEFAULT_PORTS)) {
-    const port = findFreePort(start, isFree, picked);
+    const family = name === 'app' ? appPortFamily : (port: number) => [port];
+    const port = findFreePort(
+      start,
+      (candidate) => family(candidate).every(isFree),
+      picked,
+    );
     if (port === null) return null;
-    picked.push(port);
+    picked.push(...family(port));
     result[name as keyof Ports] = port;
   }
   return result as Ports;
@@ -48,9 +66,14 @@ export function pickPorts(isFree: (port: number) => boolean): Ports | null {
 export function stackPortKeys(slug: string): {
   readonly postgres: string;
   readonly redis: string;
+  readonly app: string;
 } {
   const prefix = nameForms({ slug, display: slug }).screaming;
-  return { postgres: `${prefix}_POSTGRES_PORT`, redis: `${prefix}_REDIS_PORT` };
+  return {
+    postgres: `${prefix}_POSTGRES_PORT`,
+    redis: `${prefix}_REDIS_PORT`,
+    app: `${prefix}_APP_PORT`,
+  };
 }
 
 const assignment = (key: string) => new RegExp(`^${key}=(.*)$`, 'gm');
@@ -91,39 +114,24 @@ const movedUrls = (text: string, keys: readonly string[], port: number) =>
   );
 
 /**
- * The .env values that point this project's stack at `ports`: the compose
- * port variables plus every Postgres and Redis URL. `bun slot:up` keeps a
- * URL's host and port, so these survive it.
+ * The .env values that point this project at `ports`: the compose port
+ * variables, the main checkout's app port (which `bun slot:up` derives the
+ * app, realtime and e2e ports from, so a later restart keeps them) and every
+ * Postgres and Redis URL. `bun slot:up` keeps a URL's host and port.
  */
 export function stackEnv(
   text: string,
   slug: string,
-  ports: Pick<Ports, 'postgres' | 'redis'>,
+  ports: Ports,
 ): Record<string, string> {
   const keys = stackPortKeys(slug);
   return {
     [keys.postgres]: String(ports.postgres),
     [keys.redis]: String(ports.redis),
+    ...(ports.app === DEFAULT_PORTS.app
+      ? {}
+      : { [keys.app]: String(ports.app) }),
     ...movedUrls(text, POSTGRES_URLS, ports.postgres),
     ...movedUrls(text, REDIS_URLS, ports.redis),
-  };
-}
-
-/**
- * The app's own ports. `bun slot:up` resets these to the defaults in a main
- * checkout, so they are written after it runs, and only when they differ.
- */
-export function appEnv(
-  ports: Pick<Ports, 'app' | 'realtime'>,
-): Record<string, string> {
-  if (
-    ports.app === DEFAULT_PORTS.app &&
-    ports.realtime === DEFAULT_PORTS.realtime
-  )
-    return {};
-  return {
-    PORT: String(ports.app),
-    PUBLIC_APP_URL: `http://localhost:${ports.app}`,
-    REALTIME_PORT: String(ports.realtime),
   };
 }

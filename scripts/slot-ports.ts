@@ -6,7 +6,29 @@
 
 // realtime (ADR 0031): a dev port distinct from `app`, and an e2e port at
 // `e2e + 3` (the fourth of the browser suite's four consecutive ports).
-const mainPorts = { app: 3000, e2e: 3100, realtime: 3011 };
+// The main checkout's app port is overridable (APP_PORT_ENV) so several
+// projects can run side by side; e2e and realtime keep their offsets.
+const defaultMainAppPort = 3000;
+const mainPorts = (app: number) => ({
+  app,
+  e2e: app + 100,
+  realtime: app + 11,
+});
+
+/** The variable that moves a main checkout's app (and its e2e/realtime) ports. */
+export const APP_PORT_ENV = 'ACME_APP_PORT';
+
+/** The configured main app port, or the default when unset or empty. */
+export function mainAppPort(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return defaultMainAppPort;
+  const port = Number(raw);
+  // e2e takes app+100..+103, so the whole range must stay a valid port.
+  if (!Number.isInteger(port) || port < 1024 || port > 65_432)
+    throw new Error(
+      `${APP_PORT_ENV} must be a port number (1024-65432), got "${raw}"`,
+    );
+  return port;
+}
 // Worktree block n owns app port 13000+10n, e2e ports 13001+10n..+3, and
 // realtime ports 13000+10n+4 (e2e) and 13000+10n+5 (dev).
 const portBlockBase = 13_000;
@@ -17,8 +39,9 @@ const maxPortBlock = 499;
 export function slotPorts(
   kind: 'main' | 'worktree',
   portBlock: number | undefined,
+  mainApp: number = defaultMainAppPort,
 ): { readonly app: number; readonly e2e: number; readonly realtime: number } {
-  if (kind === 'main') return mainPorts;
+  if (kind === 'main') return mainPorts(mainApp);
   if (portBlock === undefined)
     throw new Error('A worktree slot needs a port block');
   const app = portBlockBase + portBlockSize * portBlock;

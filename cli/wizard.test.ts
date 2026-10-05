@@ -156,11 +156,12 @@ describe('runLocally', () => {
     });
     assert({
       given: 'Postgres and app default ports taken',
-      should: 'write moved ports to .env, keeping other keys',
+      should:
+        'write the moved stack and app port variables before slot:up (which derives PORT from them), keeping other keys',
       actual: fake.files[`${target}/.env`],
       expected:
-        'KEEP=yes\nDATABASE_URL=postgres://widget:pw@localhost:15433/widget\nREDIS_URL=redis://localhost:6379\nPORT=3001\n' +
-        'WIDGET_POSTGRES_PORT=15433\nWIDGET_REDIS_PORT=6379\nPUBLIC_APP_URL=http://localhost:3001\nREALTIME_PORT=3011\n',
+        'KEEP=yes\nDATABASE_URL=postgres://widget:pw@localhost:15433/widget\nREDIS_URL=redis://localhost:6379\nPORT=3000\n' +
+        'WIDGET_POSTGRES_PORT=15433\nWIDGET_REDIS_PORT=6379\nWIDGET_APP_PORT=3001\n',
     });
     assert({
       given: 'a reachable dev server and a provisioned drive',

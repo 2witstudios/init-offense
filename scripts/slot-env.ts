@@ -5,7 +5,7 @@
  */
 import { testRedisDatabase } from '@acme/config';
 import { e2eRole, type Slot } from './slot-model';
-import { slotPorts } from './slot-ports';
+import { APP_PORT_ENV, mainAppPort, slotPorts } from './slot-ports';
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -61,7 +61,7 @@ export function slotEnvValues({
 }): Readonly<Record<(typeof slotEnvKeys)[number], string>> {
   const databaseUrl = requireEnv(env, 'DATABASE_URL');
   const redisUrl = requireEnv(env, 'REDIS_URL');
-  const ports = slotPorts(slot.kind, portBlock);
+  const ports = slotPorts(slot.kind, portBlock, mainAppPort(env[APP_PORT_ENV]));
   return {
     DATABASE_URL: withPath(databaseUrl, slot.database),
     // Every slot URL shares DATABASE_URL's server, so a stale test URL left

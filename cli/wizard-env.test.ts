@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
 import { renameText } from './rename';
 import {
-  appEnv,
   findFreePort,
   pickPorts,
   readEnv,
@@ -36,12 +35,13 @@ describe('findFreePort', () => {
   });
 
   test('pickPorts', () => {
-    const busy = new Set([15432, 6379, 3000, 3001, 3011]);
+    const busy = new Set([15432, 6379, 3000, 3012]);
     assert({
-      given: 'the default ports busy',
-      should: 'move each one to the next distinct free port',
+      given: 'the default ports busy, and realtime taken for app port 3001',
+      should:
+        'move each to the next free port whose whole app family (app, +11, +100..+103) is free',
       actual: pickPorts((port) => !busy.has(port)),
-      expected: { postgres: 15433, redis: 6380, app: 3002, realtime: 3012 },
+      expected: { postgres: 15433, redis: 6380, app: 3002 },
     });
   });
 });
@@ -51,6 +51,7 @@ describe('stackEnv', () => {
     const values = stackEnv(exampleEnv, 'widget-app', {
       postgres: 25432,
       redis: 16379,
+      app: 3000,
     });
     assert({
       given: 'the template .env.example renamed for widget-app',
@@ -78,7 +79,25 @@ describe('stackEnv', () => {
       given: 'a one-word slug',
       should: 'use its SCREAMING_SNAKE form',
       actual: stackPortKeys('zed'),
-      expected: { postgres: 'ZED_POSTGRES_PORT', redis: 'ZED_REDIS_PORT' },
+      expected: {
+        postgres: 'ZED_POSTGRES_PORT',
+        redis: 'ZED_REDIS_PORT',
+        app: 'ZED_APP_PORT',
+      },
+    });
+  });
+
+  test('moved app port', () => {
+    assert({
+      given: 'an app port moved off the default',
+      should:
+        'write the app port variable, which bun slot:up derives every app port from',
+      actual: stackEnv('', 'zed', { postgres: 15432, redis: 6379, app: 3002 }),
+      expected: {
+        ZED_POSTGRES_PORT: '15432',
+        ZED_REDIS_PORT: '6379',
+        ZED_APP_PORT: '3002',
+      },
     });
   });
 });
@@ -115,27 +134,6 @@ describe('setEnv', () => {
       should: 'append on a new line',
       actual: setEnv('A=1', { B: '2' }),
       expected: 'A=1\nB=2\n',
-    });
-  });
-});
-
-describe('appEnv', () => {
-  test('defaults and moved', () => {
-    assert({
-      given: 'the default ports, then a moved app port',
-      should: 'write nothing, then PORT, PUBLIC_APP_URL and REALTIME_PORT',
-      actual: [
-        appEnv({ app: 3000, realtime: 3011 }),
-        appEnv({ app: 3002, realtime: 3011 }),
-      ],
-      expected: [
-        {},
-        {
-          PORT: '3002',
-          PUBLIC_APP_URL: 'http://localhost:3002',
-          REALTIME_PORT: '3011',
-        },
-      ],
     });
   });
 });

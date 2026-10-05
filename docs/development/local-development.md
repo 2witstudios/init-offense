@@ -133,6 +133,19 @@ which `bun slot:up` derives from the checkout folder
 | Main checkout                 | `acme`, `acme_test`, `acme_e2e`                                     | `acme`, `acme-e2e`                         | 3000, 3100                     | 3011, 3103                     |
 | Worktree folder `wt-3ctbm0tw` | `acme_wt_3ctbm0tw`, `acme_wt_3ctbm0tw_test`, `acme_wt_3ctbm0tw_e2e` | `acme-wt-3ctbm0tw`, `acme-wt-3ctbm0tw-e2e` | 13000+10n, 13001+10n (block n) | 13005+10n, 13004+10n (block n) |
 
+### Running beside another project
+
+Projects generated from this template each run their own stack, so two of
+them (or this one and anything else on `15432`/`6379`/`3000`) collide on
+host ports. Set these in `.env` (or the environment) and `bun slot:up`
+moves everything to match; the setup wizard writes them for you when the
+defaults are taken:
+
+- `ACME_POSTGRES_PORT`, `ACME_REDIS_PORT`: the host ports
+  `infra/compose.yaml` publishes; the stack URLs move with them.
+- `ACME_APP_PORT`: the main checkout's app port; realtime follows at
+  `+11` and the browser suite at `+100`…`+103`.
+
 In a new worktree, copy the main checkout's `.env` (or `.env.example`) and
 run `bun slot:up`. It is idempotent:
 
