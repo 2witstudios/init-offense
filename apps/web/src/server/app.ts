@@ -12,6 +12,7 @@ import { createRedis } from '@acme/redis';
 import { createResendSender, type Fetch } from '../features/auth/mail';
 import { createAuthRateLimiter } from '../features/auth/redis-limiter';
 import { createAuthServer, type AuthServer } from '../features/auth/server';
+import { createTerminalSender } from '../features/auth/terminal-mail';
 import type { AfterResponseLimits } from '../features/auth/after-response';
 import { createResendWebhook } from '../features/auth/webhook';
 import { createAlertRecorder, withAlertRecording } from './alert-recorder';
@@ -26,6 +27,11 @@ export type AppDependencies = {
   readonly ids: IdGenerator;
   /** Where log lines go; standard output when omitted. */
   readonly logDestination?: { readonly write: (line: string) => void };
+  /**
+   * Where the local-development terminal mailer prints (ADR 0050); the
+   * server's stderr when omitted. Never the log destination.
+   */
+  readonly devMailDestination?: { readonly write: (chunk: string) => unknown };
   /**
    * Narrower bounds for auth's handed-off work, for suites that must fill
    * them with a few requests; production uses the defaults.
@@ -55,6 +61,7 @@ export function createApp({
   clock,
   ids,
   logDestination,
+  devMailDestination,
   afterResponseLimits,
   redisClient,
 }: AppDependencies) {
@@ -92,12 +99,21 @@ export function createApp({
     return createAuthServer({
       config: authConfig,
       database: database.authAdapter,
-      emailSender: createResendSender({
-        apiKey: authConfig.RESEND_API_KEY,
-        from: authConfig.AUTH_EMAIL_FROM,
-        ids,
-        fetch,
-      }),
+      emailSender:
+        authConfig.mailTransport === 'resend'
+          ? createResendSender({
+              apiKey: authConfig.RESEND_API_KEY,
+              from: authConfig.AUTH_EMAIL_FROM,
+              ids,
+              fetch,
+            })
+          : createTerminalSender({
+              nodeEnv: config.NODE_ENV,
+              ids,
+              ...(devMailDestination
+                ? { destination: devMailDestination }
+                : {}),
+            }),
       limiter: createAuthRateLimiter(redis),
       ledger: {
         isSuppressed: (hash) => database.isRecipientSuppressed(hash),
@@ -117,8 +133,12 @@ export function createApp({
   };
   const composeMailWebhook = () => {
     const authConfig = readAuth();
-    // Refuses rather than accept unsigned deliveries.
-    if (!authConfig.RESEND_WEBHOOK_SECRET)
+    // Refuses rather than accept unsigned deliveries, and has nothing to
+    // verify against when the terminal mailer (ADR 0050) sends nothing.
+    if (
+      !authConfig.RESEND_WEBHOOK_SECRET ||
+      authConfig.mailTransport !== 'resend'
+    )
       throw createAppError('INFRASTRUCTURE');
     return createResendWebhook({
       secret: authConfig.RESEND_WEBHOOK_SECRET,

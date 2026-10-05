@@ -102,7 +102,10 @@ guessing an id.
   [database operations](docs/operations/database.md).
 - Use UTC ISO timestamps, cuid2 application IDs, documented UUID exceptions, and integer millisecond durations. cuid2 IDs are identifiers, never bearer secrets. Use
   structured logging; never log credentials, cookies, raw request bodies, or
-  raw exceptions. Public errors must not expose internals.
+  raw exceptions. The one exception is the local-development terminal mailer,
+  which prints emailed sign-in links to stderr and never to the structured
+  logger ([ADR 0050](docs/decisions/0050-local-development-terminal-mailer.md)).
+  Public errors must not expose internals.
 - Every log field, database column, Redis key and vendor-held record has a
   privacy category (`none | identifier | personal | sensitive | secret`)
   and, when personal, a visibility (`public | private`); identifiers are

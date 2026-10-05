@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  MAIL_FIELDS,
+  terminalMailerAllowed,
+  type AuthMailTransport,
+} from './auth-mail-transport';
 import { databaseUrl, redisUrl } from './urls';
 
 export { requireTestServices, requireTestSlotServices } from './test-services';
@@ -189,7 +194,11 @@ const authFields = {
       return false;
     }
   }, 'Expected HTTP(S) URL'),
-  RESEND_API_KEY: secret(z.string().regex(/^\S+$/)),
+  /**
+   * Required with `AUTH_EMAIL_FROM` everywhere except local development,
+   * where leaving both unset selects the terminal mailer (ADR 0050).
+   */
+  RESEND_API_KEY: secret(z.string().regex(/^\S+$/)).optional(),
   /** Sender email header value; newlines and malformed mailboxes are rejected. */
   AUTH_EMAIL_FROM: z
     .string()
@@ -199,7 +208,8 @@ const authFields = {
           value,
         ),
       'Expected an email address or display name with an email address',
-    ),
+    )
+    .optional(),
   /** Resend (Svix) signing secret for delivery webhooks; required in production. */
   RESEND_WEBHOOK_SECRET: secret(
     z.string().regex(/^whsec_[A-Za-z0-9+/=]{16,}$/),
@@ -220,17 +230,39 @@ const REQUIRED_IN_PRODUCTION = [
   ['RESEND_WEBHOOK_SECRET', 'Production requires the webhook signing secret'],
   ['OPS_PROBE_TOKEN', 'Production requires the ops probe token'],
 ] as const;
-const authConfigSchema = z
-  .object(authFields)
+const authObject = z.object(authFields);
+type AuthBase = Omit<
+  z.output<typeof authObject>,
+  'NODE_ENV' | (typeof MAIL_FIELDS)[number]
+>;
+export type AuthConfig = AuthBase & AuthMailTransport;
+const authConfigSchema = authObject
   .superRefine((config, ctx) => {
+    if (!terminalMailerAllowed(config))
+      for (const field of MAIL_FIELDS)
+        if (config[field] === undefined)
+          ctx.addIssue({
+            code: 'custom',
+            path: [field],
+            message: 'Auth mail requires Resend outside local development',
+          });
     if (config.NODE_ENV !== 'production') return;
     requireHttpsOrigin(config.PUBLIC_APP_URL, ctx);
     for (const [field, message] of REQUIRED_IN_PRODUCTION)
       if (config[field] === undefined)
         ctx.addIssue({ code: 'custom', path: [field], message });
   })
-  .transform(({ NODE_ENV: _nodeEnv, ...auth }) => auth);
-export type AuthConfig = z.infer<typeof authConfigSchema>;
+  .transform(
+    ({
+      NODE_ENV: _nodeEnv,
+      RESEND_API_KEY,
+      AUTH_EMAIL_FROM,
+      ...auth
+    }): AuthConfig =>
+      RESEND_API_KEY !== undefined && AUTH_EMAIL_FROM !== undefined
+        ? { ...auth, mailTransport: 'resend', RESEND_API_KEY, AUTH_EMAIL_FROM }
+        : { ...auth, mailTransport: 'terminal' },
+  );
 /** Validation reports field names only: never echo secret values. */
 export function readAuthConfig(
   env: Record<string, string | undefined>,
