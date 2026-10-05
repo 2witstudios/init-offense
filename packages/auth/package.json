@@ -1,0 +1,19 @@
+{
+  "name": "@acme/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "@acme/errors": "workspace:*"
+  },
+  "devDependencies": {
+    "riteway": "9.3.0"
+  }
+}

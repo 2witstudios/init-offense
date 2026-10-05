@@ -1,0 +1,30 @@
+{
+  "realtime": {
+    "description": "The websocket service (apps/realtime), its web client feature and API routes, and the Redis ticket and presence helpers it uses.",
+    "experimental": true,
+    "paths": [
+      "apps/realtime",
+      "apps/web/src/features/realtime",
+      "apps/web/src/app/api/realtime",
+      "packages/redis/src/ticket*.ts",
+      "packages/redis/src/presence*.ts",
+      "apps/web/integration/realtime-*.ts",
+      "apps/web/e2e/realtime-*.ts"
+    ],
+    "packageJsonEdits": [],
+    "notes": "Not yet decoupled: packages/redis, packages/protocol, the realtime config schema, slot ports, knip.jsonc, fly config and docs still mention realtime. Follow the reference report printed after generation."
+  },
+  "docs": {
+    "description": "The documentation pipeline: docs classification, dispatch, verification and reconciliation scripts, the release notification workflow and their docs.",
+    "experimental": true,
+    "paths": [
+      "scripts/docs-*.ts",
+      "scripts/dispatch-docs.ts",
+      ".github/workflows/notify-release.yml",
+      "docs/architecture/documentation-pipeline.md",
+      "docs/operations/documentation-review-workflows.md"
+    ],
+    "packageJsonEdits": [],
+    "notes": "Not yet decoupled: notify-merge.yml still dispatches docs, scripts/pagespace-docs.ts and the documentation agent pages remain. package.json scripts that run a removed file are dropped automatically."
+  }
+}

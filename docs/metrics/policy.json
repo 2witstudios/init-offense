@@ -1,0 +1,15 @@
+{
+  "coverage": {
+    "@acme/auth": { "lines": 100, "functions": 100 },
+    "@acme/config": { "lines": 75, "functions": 85 },
+    "@acme/db": { "lines": 90, "functions": 30 },
+    "@acme/domain": { "lines": 95, "functions": 100 },
+    "@acme/errors": { "lines": 100, "functions": 100 },
+    "@acme/logger": { "lines": 100, "functions": 65 },
+    "@acme/observability": { "lines": 95, "functions": 85 },
+    "@acme/protocol": { "lines": 100, "functions": 100 },
+    "@acme/realtime": { "lines": 84, "functions": 81 },
+    "@acme/redis": { "lines": 15, "functions": 65 },
+    "@acme/web": { "lines": 90, "functions": 85 }
+  }
+}

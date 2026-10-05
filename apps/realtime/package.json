@@ -1,0 +1,25 @@
+{
+  "name": "@acme/realtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test src",
+    "test:integration": "bun ../../scripts/test-integration.ts",
+    "dev": "bun --watch src/start.ts",
+    "start": "NODE_ENV=production bun src/start.ts"
+  },
+  "dependencies": {
+    "@acme/clock": "workspace:*",
+    "@acme/config": "workspace:*",
+    "@acme/db": "workspace:*",
+    "@acme/logger": "workspace:*",
+    "@acme/observability": "workspace:*",
+    "@acme/protocol": "workspace:*",
+    "@acme/redis": "workspace:*"
+  },
+  "devDependencies": {
+    "riteway": "9.3.0"
+  }
+}
