@@ -1,3 +1,4 @@
+import { rejectionOf } from '@acme/errors/testing';
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
 import { createTestDatabase, type SinkEvent } from '../index.test-support';
 
@@ -73,21 +74,18 @@ describe('loadAuthorizationContext', () => {
   test('a failed read is reported and rethrown', async () => {
     const events: SinkEvent[] = [];
     const { database } = createTestDatabase([new Error('down')], events);
-    let rejected = false;
-    try {
-      await database.loadAuthorizationContext({
+    const rejection = await rejectionOf(() =>
+      database.loadAuthorizationContext({
         userId: 'user1',
         resourceRef: projects,
-      });
-    } catch {
-      rejected = true;
-    }
+      }),
+    );
     assert({
       given: 'a database that refuses the read',
       should: 'reject and report db.query.failed for the operation',
-      actual: { rejected, events: events.map(({ fields }) => fields) },
+      actual: { rejection, events: events.map(({ fields }) => fields) },
       expected: {
-        rejected: true,
+        rejection: { code: 'NOT_APP_ERROR', name: 'DrizzleQueryError' },
         events: [{ operation: 'loadAuthorizationContext' }],
       },
     });

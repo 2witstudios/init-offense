@@ -30,12 +30,6 @@ export type { PresenceActivity, PresenceStatus } from './realtime';
 export {
   capabilities,
   capabilityMetadata,
-  denyReasons,
   resourceKinds,
 } from './authorization';
-export type {
-  Capability,
-  CapabilityMetadata,
-  DenyReason,
-  ResourceKind,
-} from './authorization';
+export type { Capability, DenyReason, ResourceKind } from './authorization';

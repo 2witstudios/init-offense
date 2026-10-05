@@ -23,10 +23,7 @@ import {
 } from './runtime-role';
 import { RUNTIME_SESSION } from './session-bounds';
 export type { UsernameClaim } from './username-claim';
-export type {
-  AuthorizationProjection,
-  ResourceRef,
-} from './authorization/load-context';
+export type { ResourceRef } from './authorization/load-context';
 export type { DatabaseEventSink } from './instrumented';
 export {
   encodeOutboxCursor,

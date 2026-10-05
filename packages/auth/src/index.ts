@@ -8,9 +8,4 @@ export type Principal =
   | { readonly kind: 'user'; readonly userId: string };
 export { parseUsername } from './username';
 export { resolveIdentity, type Identity } from './identity';
-export {
-  authorize,
-  toAuthorizationInput,
-  type AuthorizationProjection,
-  type Decision,
-} from './authorize';
+export { authorize, toAuthorizationInput } from './authorize';
