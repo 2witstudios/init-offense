@@ -35,6 +35,22 @@ export function claimsOf(files: readonly string[]): readonly Claim[] {
   );
 }
 
+/**
+ * ADR numbers the decisions index reserves under "Intentionally absent
+ * numbers": records removed on purpose, never to be reused. Pure: callers
+ * read docs/decisions/README.md.
+ */
+export function reservedAdrClaims(index: string): readonly Claim[] {
+  const section = /## Intentionally absent numbers\n([\s\S]*?)(?:\n## |$)/.exec(
+    index,
+  );
+  return [...(section?.[1] ?? '').matchAll(/\b\d{4}\b/g)].map(([number]) => ({
+    kind: 'ADR' as const,
+    number,
+    file: 'docs/decisions/README.md',
+  }));
+}
+
 export function nextFree(claims: readonly Claim[], kind: Kind): string {
   const numbers = claims
     .filter((claim) => claim.kind === kind)
@@ -166,6 +182,11 @@ if (import.meta.main) {
     ...claimsOf(lines(main.stdout)),
     ...claimsOf(lines(local.stdout)),
     ...listOpenPrs().flatMap((pr) => claimsOf(pr.files)),
+    ...reservedAdrClaims(
+      await Bun.file('docs/decisions/README.md')
+        .text()
+        .catch(() => ''),
+    ),
   ];
   process.stdout.write(`next ADR: ${nextFree(claims, 'ADR')}\n`);
 }

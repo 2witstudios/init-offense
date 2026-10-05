@@ -5,6 +5,7 @@ import {
   listOpenPrs,
   nextFree,
   numberCollisionProblems,
+  reservedAdrClaims,
   type OpenPr,
 } from './number-claims';
 
@@ -171,6 +172,28 @@ describe('numberCollisionProblems', () => {
         numberCollisionProblems(fake('none'), {}).length,
       ],
       expected: [[50], 1],
+    });
+  });
+});
+
+describe('reservedAdrClaims', () => {
+  test('reserves the intentionally absent numbers', () => {
+    const index =
+      '# Decisions\n\n## Intentionally absent numbers\n\n0006, 0022 and 0049 are missing on\npurpose.\n\n## Other\n\n0050 is mentioned elsewhere.\n';
+    assert({
+      given: 'a decisions index whose highest number is reserved',
+      should: 'claim only the reserved numbers, so nextFree skips past them',
+      actual: [
+        reservedAdrClaims(index).map((claim) => claim.number),
+        nextFree(
+          [
+            { kind: 'ADR', number: '0048', file: 'docs/decisions/0048-x.md' },
+            ...reservedAdrClaims(index),
+          ],
+          'ADR',
+        ),
+      ],
+      expected: [['0006', '0022', '0049'], '0050'],
     });
   });
 });
