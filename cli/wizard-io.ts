@@ -1,0 +1,240 @@
+/**
+ * The real effects behind `WizardDeps`: child processes, the terminal
+ * (node:readline, no dependencies), the browser, ports and files.
+ */
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { delimiter, dirname, join } from 'node:path';
+import { createInterface } from 'node:readline';
+import {
+  WizardStop,
+  type Captured,
+  type Choice,
+  type Prompt,
+  type RunOptions,
+  type Runner,
+  type WizardDeps,
+} from './wizard-deps';
+import { openerCommand, type Command } from './wizard-plan';
+
+const PROBE_TIMEOUT_MS = 20_000;
+
+/** PATH with Bun's own directory and its global bin directory first. */
+const childPath = (): string =>
+  [
+    dirname(process.execPath),
+    join(homedir(), '.bun', 'bin'),
+    process.env.PATH ?? '',
+  ].join(delimiter);
+
+const childEnv = (options: RunOptions = {}): NodeJS.ProcessEnv => ({
+  ...process.env,
+  PATH: childPath(),
+  ...options.env,
+});
+
+const output = (stdout: string | null): string => stdout ?? '';
+
+const runner: Runner = {
+  probe: (command, options) => {
+    const [file = '', ...args] = command;
+    const result = spawnSync(file, args, {
+      cwd: options?.cwd,
+      env: childEnv(options),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: PROBE_TIMEOUT_MS,
+    });
+    return { code: result.status ?? 127, stdout: output(result.stdout) };
+  },
+  run: (command, options) => {
+    const [file = '', ...args] = command;
+    return (
+      spawnSync(file, args, {
+        cwd: options?.cwd,
+        env: childEnv(options),
+        stdio: 'inherit',
+      }).status ?? 1
+    );
+  },
+  capture: (command, options): Captured => {
+    const [file = '', ...args] = command;
+    const result = spawnSync(file, args, {
+      cwd: options?.cwd,
+      env: childEnv(options),
+      encoding: 'utf8',
+      stdio: ['inherit', 'pipe', 'inherit'],
+    });
+    return { code: result.status ?? 1, stdout: output(result.stdout) };
+  },
+  start: (command, options) =>
+    new Promise((resolve) => {
+      const [file = '', ...args] = command;
+      const child = spawn(file, args, {
+        cwd: options?.cwd,
+        env: childEnv(options),
+        stdio: 'inherit',
+      });
+      child.on('error', () => resolve(127));
+      child.on('exit', (code) => resolve(code ?? 130));
+    }),
+};
+
+const cancelled = () =>
+  new WizardStop('\nCancelled. Nothing else was changed.', 130);
+
+/** One line of input; Ctrl-C or Ctrl-D cancels the wizard. */
+function ask(question: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const rl = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: true,
+    });
+    let answered = false;
+    rl.on('SIGINT', () => rl.close());
+    rl.on('close', () => {
+      if (!answered) reject(cancelled());
+    });
+    rl.question(question, (answer) => {
+      answered = true;
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+const YES = new Set(['y', 'yes']);
+const NO = new Set(['n', 'no']);
+
+const say = (line: string) => process.stdout.write(`${line}\n`);
+
+const ttyPrompt: Prompt = {
+  text: async (question, fallback, validate) => {
+    for (;;) {
+      const answer =
+        (await ask(`${question}${fallback ? ` (${fallback})` : ''}: `)) ||
+        fallback;
+      const problem =
+        answer === '' ? 'needs an answer' : (validate?.(answer) ?? null);
+      if (!problem) return answer;
+      say(`  That ${problem}. Try again.`);
+    }
+  },
+  confirm: async (question, fallback) => {
+    for (;;) {
+      const answer = (
+        await ask(`${question} ${fallback ? '[Y/n]' : '[y/N]'} `)
+      ).toLowerCase();
+      if (answer === '') return fallback;
+      if (YES.has(answer)) return true;
+      if (NO.has(answer)) return false;
+      say('  Please answer y or n.');
+    }
+  },
+  select: async <T extends string>(
+    question: string,
+    choices: readonly Choice<T>[],
+    fallback: T,
+  ) => {
+    say(question);
+    choices.forEach((choice, index) => say(`  ${index + 1}. ${choice.label}`));
+    const fallbackIndex =
+      choices.findIndex((choice) => choice.value === fallback) + 1;
+    for (;;) {
+      const answer = await ask(
+        `Choose 1-${choices.length} (${fallbackIndex}): `,
+      );
+      const picked =
+        answer === ''
+          ? choices[fallbackIndex - 1]
+          : choices[Number(answer) - 1];
+      if (picked) return picked.value;
+      say(`  Please type a number from 1 to ${choices.length}.`);
+    }
+  },
+  pause: async (message) => {
+    await ask(`${message} `);
+  },
+};
+
+const noTerminal = (question: string): never => {
+  throw new WizardStop(
+    `This step asks "${question}", but there is no terminal to answer in. ` +
+      'Re-run with --yes (and --name <slug>) to accept the defaults, or pass the answer as a flag.',
+    2,
+  );
+};
+
+const headlessPrompt: Prompt = {
+  text: async (question) => noTerminal(question),
+  confirm: async (question) => noTerminal(question),
+  select: async (question) => noTerminal(question),
+  pause: async (message) => noTerminal(message),
+};
+
+function isPortFree(port: number): boolean {
+  try {
+    const listener = Bun.listen({
+      hostname: '127.0.0.1',
+      port,
+      socket: { data() {} },
+    });
+    listener.stop(true);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function reachable(url: string): Promise<boolean> {
+  try {
+    await fetch(url, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(5_000),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function open(url: string): void {
+  const [file = '', ...args] = openerCommand(process.platform, url) as Command;
+  try {
+    spawn(file, args, { stdio: 'ignore', detached: true })
+      .on('error', () => {})
+      .unref();
+  } catch {
+    // The URL is printed beside every open, so a missing opener costs nothing.
+  }
+  say(`  (opened ${url})`);
+}
+
+const ignoreInterrupt = () => {};
+
+export function realDeps(templateRoot: string): WizardDeps {
+  const pinned = join(templateRoot, '.bun-version');
+  return {
+    runner,
+    prompt: process.stdin.isTTY ? ttyPrompt : headlessPrompt,
+    open,
+    log: say,
+    platform: process.platform,
+    cwd: process.cwd(),
+    isPortFree,
+    sleep: (ms) => Bun.sleep(ms),
+    holdInterrupts: () => {
+      process.on('SIGINT', ignoreInterrupt);
+      return () => process.off('SIGINT', ignoreInterrupt);
+    },
+    reachable,
+    readFile: (path) => (existsSync(path) ? readFileSync(path, 'utf8') : null),
+    writeFile: (path, text) => writeFileSync(path, text),
+    bunVersion: Bun.version,
+    pinnedBunVersion: existsSync(pinned)
+      ? readFileSync(pinned, 'utf8').trim()
+      : null,
+  };
+}

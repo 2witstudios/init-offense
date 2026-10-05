@@ -11,7 +11,10 @@
       "entry": [
         "cli/init.ts",
         "cli/verify-generated.ts",
+        "cli/wizard.ts",
         "cli/**/*.test.ts",
+        "create/bin/create-init-offense.js",
+        "create/**/*.test.ts",
         "scenarios/*.ts",
       ],
     },

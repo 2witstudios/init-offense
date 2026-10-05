@@ -37,7 +37,8 @@ const PU_KEPT = new Set(['.pu/config.yaml', '.pu/agent-context.md']);
 export function isExcluded(path: string): boolean {
   const segments = path.split('/');
   const base = segments.at(-1) ?? '';
-  if (segments[0] === 'cli') return true;
+  // The generator (cli/) and the npm bootstrapper (create/) stay with the template.
+  if (segments[0] === 'cli' || segments[0] === 'create') return true;
   if (segments.some((segment) => EXCLUDED_SEGMENTS.has(segment))) return true;
   if (EXCLUDED_FILES.has(base)) return true;
   if (base.endsWith('.tsbuildinfo')) return true;

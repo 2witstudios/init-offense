@@ -27,7 +27,7 @@ export type Names = {
   /** New `owner/name` repository; replaces `templateRepo` in text. */
   readonly repo?: string;
   /** The template's own repository string, e.g. `2witstudios/acme`. */
-  readonly templateRepo?: string;
+  readonly templateRepo?: string | undefined;
 };
 
 export type NameForms = {

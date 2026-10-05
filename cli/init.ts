@@ -242,8 +242,12 @@ function generate(options: Options, modules: Modules, log: Deps['log']): void {
   reportReferences(generated.references, log);
 }
 
-/** Runs the whole flow. Returns a process exit code. */
-function runNew(
+/**
+ * Generates, installs, creates the GitHub repository and bootstraps the
+ * drive as `options` enable, without the closing summary. Returns a process
+ * exit code. `bun cli/wizard.ts` calls this directly.
+ */
+export function createProject(
   options: Options,
   deps: Deps,
   modules: Modules = loadModules(),
@@ -260,7 +264,13 @@ function runNew(
     [options.github, githubStep],
     [options.drive, driveStep],
   ];
-  if (!steps.every(([enabled, run]) => !enabled || run(context))) return 1;
+  return steps.every(([enabled, run]) => !enabled || run(context)) ? 0 : 1;
+}
+
+/** Runs the whole flow. Returns a process exit code. */
+function runNew(options: Options, deps: Deps): number {
+  const code = createProject(options, deps);
+  if (code !== 0) return code;
   deps.log(`\nDone: ${options.target}`);
   deps.log('Remaining human steps:');
   humanSteps(options).forEach((line, index) =>

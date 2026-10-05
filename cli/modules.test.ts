@@ -19,6 +19,7 @@ describe('copy exclusions', () => {
     const paths = [
       'apps/web/src/app/page.tsx',
       'cli/init.ts',
+      'create/bin/create-init-offense.js',
       'node_modules/x/index.js',
       'apps/web/node_modules/y.js',
       'apps/web/.next/server.js',
@@ -39,7 +40,7 @@ describe('copy exclusions', () => {
     assert({
       given: 'template-relative paths',
       should:
-        'exclude cli/, dependencies, build output, secrets and pu runtime state',
+        'exclude cli/, create/, dependencies, build output, secrets and pu runtime state',
       actual: paths.filter((path) => !isExcluded(path)),
       expected: [
         'apps/web/src/app/page.tsx',

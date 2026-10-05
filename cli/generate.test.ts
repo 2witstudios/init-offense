@@ -192,13 +192,13 @@ describe('module removal', () => {
 });
 
 describe('stripTemplateWiring', () => {
-  test('removes the cli test run and knip entry', () => {
+  test('removes the cli and create test runs and knip entries', () => {
     assert({
       given: 'the template package.json test script',
-      should: 'drop the cli test run',
+      should: 'drop the cli and create test runs',
       actual: stripTemplateWiring(
         'package.json',
-        '"test": "bun test ./scripts && bun test ./cli && turbo run test",',
+        '"test": "bun test ./scripts && bun test ./cli && bun test ./create && turbo run test",',
       ),
       expected: '"test": "bun test ./scripts && turbo run test",',
     });
@@ -213,10 +213,10 @@ describe('stripTemplateWiring', () => {
     });
     assert({
       given: 'the template knip root entry as prettier lays it out',
-      should: 'drop every cli/ entry line',
+      should: 'drop every cli/ and create/ entry line',
       actual: stripTemplateWiring(
         'knip.jsonc',
-        '".": {\n  "entry": [\n    "cli/init.ts",\n    "cli/verify-generated.ts",\n    "cli/**/*.test.ts",\n    "scenarios/*.ts",\n  ],\n},',
+        '".": {\n  "entry": [\n    "cli/init.ts",\n    "cli/verify-generated.ts",\n    "cli/**/*.test.ts",\n    "create/bin/create-init-offense.js",\n    "create/**/*.test.ts",\n    "scenarios/*.ts",\n  ],\n},',
       ),
       expected: '".": {\n  "entry": [\n    "scenarios/*.ts",\n  ],\n},',
     });

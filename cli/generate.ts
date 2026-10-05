@@ -113,18 +113,19 @@ export function generateTree(
 }
 
 /**
- * The template wires its own `cli/` into the test script and knip; a
- * generated project has no `cli/`, so both references are removed.
+ * The template wires its own `cli/` and `create/` into the test script and
+ * knip; a generated project has neither, so those references are removed.
  */
 export function stripTemplateWiring(file: string, text: string): string {
-  if (file === 'package.json') return text.replace(' && bun test ./cli', '');
+  if (file === 'package.json')
+    return text.replace(' && bun test ./cli && bun test ./create', '');
   if (file === 'knip.jsonc')
     return text
       .replace(
         / {4}\/\/ The template's one-shot initializer[^\n]*\n {4}\/\/ cli\/ from every[^\n]*\n/,
         '',
       )
-      .replace(/^\s*"cli\/[^"\n]*",\n/gm, '')
-      .replace(/"cli\/[^"\n]*", /g, '');
+      .replace(/^\s*"(?:cli|create)\/[^"\n]*",\n/gm, '')
+      .replace(/"(?:cli|create)\/[^"\n]*", /g, '');
   return text;
 }

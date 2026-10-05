@@ -55,7 +55,7 @@
     "scenario": "bun scripts/scenario.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "bun test ./scripts && bun test ./cli && turbo run test",
+    "test": "bun test ./scripts && bun test ./cli && bun test ./create && turbo run test",
     "test:lint": "bun test --timeout 180000 eslint.config.test.ts",
     "test:integration": "bun --env-file=.env run turbo run test:integration --concurrency=1",
     "visual:server": "bun scripts/visual-server.ts",

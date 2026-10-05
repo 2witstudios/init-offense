@@ -1,0 +1,32 @@
+{
+  "name": "create-init-offense",
+  "version": "0.1.0",
+  "description": "Create a new app from the init-offense template: sign-in, Postgres, Redis and a PageSpace drive, running locally in one command.",
+  "type": "module",
+  "bin": {
+    "create-init-offense": "bin/create-init-offense.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2witstudios/init-offense.git",
+    "directory": "create"
+  },
+  "homepage": "https://github.com/2witstudios/init-offense#quickstart",
+  "keywords": [
+    "create",
+    "template",
+    "bun",
+    "nextjs",
+    "pagespace"
+  ],
+  "license": "MIT"
+}
