@@ -47,6 +47,19 @@ describe('parseVerifyArgs', () => {
     });
   });
 
+  test('adds the optional browser stage when asked', () => {
+    assert({
+      given: '--e2e, then e2e listed in --stages, then both',
+      should: 'append e2e after the stages once',
+      actual: [
+        parseVerifyArgs(['zed', '--e2e'], '/scratch'),
+        parseVerifyArgs(['zed', '--stages', 'test,e2e'], '/scratch'),
+        parseVerifyArgs(['zed', '--stages', 'e2e', '--e2e'], '/scratch'),
+      ].map((options) => ('stages' in options ? options.stages : options)),
+      expected: [[...STAGES, 'e2e'], ['test', 'e2e'], ['e2e']],
+    });
+  });
+
   test('refuses a missing slug and unknown stages', () => {
     assert({
       given: 'no slug, then a policy stage',

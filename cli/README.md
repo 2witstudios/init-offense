@@ -142,15 +142,45 @@ override with `--dir`), runs `format:check`, `lint`, `knip`,
 `metrics:check` and `build` in order, writes each stage's output to
 `<dir>.logs/<stage>.log` and prints a Markdown results table. It stops at
 the first failure unless `--keep-going`; `--stages lint,test` runs a
-subset. The three slugs cover a hyphenated name, a long one (wider
+subset. Keep `<dir>` out of any directory with a `tsconfig.json` above
+it: knip's config loader walks up past the project root and fails on a
+stray one.
+
+`--e2e` (or `e2e` in `--stages`) adds the browser suite after the other
+stages (`cli/verify-e2e.ts`); it needs Docker and the Playwright browsers:
+
+```sh
+bun cli/verify-generated.ts widget-app --e2e
+```
+
+It picks free host ports probing up from Postgres 25432, Redis 16379 and
+app 3200 (clear of the defaults other projects' stacks hold), writes them
+to the generated `.env` as `<SCREAMING_SLUG>_POSTGRES_PORT`,
+`_REDIS_PORT` and `_APP_PORT` with every stack URL, runs `bun slot:up`
+under its own Compose project `verify-<slug>`, then
+`bun run test:e2e -- -- --project=chromium --project=firefox` (the second
+`--` passes the flags through turbo to Playwright), and finally
+`docker compose down --volumes` for that project only, pass or fail. Logs
+are `e2e-up.log`, `e2e.log` and `e2e-down.log`. WebKit is left out: on
+macOS it follows the system Tab-focus setting
+([testing](../docs/development/testing.md#known-limits-of-the-browser-harness)),
+and Linux CI already runs it. The three slugs cover a hyphenated name, a long one (wider
 identifiers, prettier rewraps, `max-lines` headroom) and a one-word one
 (sort order and a slug equal to its own snake form).
 
-Two template rules keep the loop green:
+Three template rules keep the loop green:
 
 - Files stay well under their `max-lines` limits (split by
   responsibility, never raise the limit): a rename lengthens lines and
   prettier rewraps them.
+- A spec that matches the product name with a regex, or compares it in a
+  sorted list, reads it from `appConfig.brand.displayName`
+  (`apps/web/e2e/support/brand.ts`). The renamer decides by context, and
+  inside a regex the placeholder reads as an identifier (`/^Acme$/`
+  becomes PascalCase) or a slug (`/continue to acme/i`), not the name the
+  app renders; and `Acme home` sorts before `Sign in` where `Widget App
+home` does not. Plain prose strings (`'Sign in to Acme'`) rename
+  correctly. Only the `e2e` stage catches a slip here.
 - Tests never spell a renamed identifier in a form the code does not
   compute. Postgres names are the slug's snake form and Redis namespaces
   its kebab form (`scripts/slot-naming.ts`), so a bare `'acme'` that

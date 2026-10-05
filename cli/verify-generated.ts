@@ -5,7 +5,10 @@
  * GitHub remote a `--no-github` project lacks).
  *
  *   bun cli/verify-generated.ts <slug> [--display "Name"] [--dir <dir>]
- *     [--stages lint,test] [--keep-going]
+ *     [--stages lint,test] [--e2e] [--keep-going]
+ *
+ * `--e2e` (or `e2e` in `--stages`) adds the browser suite on a stack of its
+ * own (cli/verify-e2e.ts).
  *
  * The target directory is deleted first. Each stage's output goes to
  * `<dir>.logs/<stage>.log`; a table of results is printed at the end and
@@ -17,6 +20,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { defaultDisplay } from './rename';
+import { runE2EStage } from './verify-e2e';
+import { isPortFree } from './wizard-io';
 
 /** `bun check` without `policy`, in its order. */
 export const STAGES = [
@@ -32,6 +37,9 @@ export const STAGES = [
   'build',
 ] as const;
 
+/** Stages only run when asked for: `e2e` needs Docker and browsers. */
+const OPTIONAL_STAGES = ['e2e'] as const;
+
 export type VerifyOptions = {
   readonly slug: string;
   readonly display: string;
@@ -40,7 +48,18 @@ export type VerifyOptions = {
   readonly keepGoing: boolean;
 };
 
-const VERIFY_USAGE = `Usage: bun cli/verify-generated.ts <slug> [--display "Name"] [--dir <dir>] [--stages a,b] [--keep-going]`;
+/** The stages to run: `--stages` (default all of STAGES), then `e2e` once for `--e2e`. */
+const selectStages = (
+  listed: string | undefined,
+  e2e: boolean,
+): readonly string[] => {
+  const chosen = listed
+    ? listed.split(',').map((stage) => stage.trim())
+    : [...STAGES];
+  return e2e && !chosen.includes('e2e') ? [...chosen, 'e2e'] : chosen;
+};
+
+const VERIFY_USAGE = `Usage: bun cli/verify-generated.ts <slug> [--display "Name"] [--dir <dir>] [--stages a,b] [--e2e] [--keep-going]`;
 
 /** Parses argv (without `bun cli/verify-generated.ts`). */
 export function parseVerifyArgs(
@@ -56,6 +75,7 @@ export function parseVerifyArgs(
         display: { type: 'string' },
         dir: { type: 'string' },
         stages: { type: 'string' },
+        e2e: { type: 'boolean', default: false },
         'keep-going': { type: 'boolean', default: false },
       },
     });
@@ -65,12 +85,9 @@ export function parseVerifyArgs(
   const { values, positionals } = parsed;
   const [slug, ...extra] = positionals;
   if (!slug || extra.length > 0) return { error: VERIFY_USAGE };
-  const stages = values.stages
-    ? values.stages.split(',').map((stage) => stage.trim())
-    : [...STAGES];
-  const unknown = stages.filter(
-    (stage) => !(STAGES as readonly string[]).includes(stage),
-  );
+  const stages = selectStages(values.stages, values.e2e);
+  const known: readonly string[] = [...STAGES, ...OPTIONAL_STAGES];
+  const unknown = stages.filter((stage) => !known.includes(stage));
   if (unknown.length > 0)
     return { error: `Unknown stage(s): ${unknown.join(', ')}` };
   return {
@@ -101,17 +118,35 @@ const runLogged = (
   args: readonly string[],
   cwd: string,
   log: string,
+  env: Record<string, string | undefined> = process.env,
 ): number => {
   const fd = openSync(log, 'w');
   try {
     return (
-      spawnSync(command, [...args], { cwd, stdio: ['ignore', fd, fd] })
+      spawnSync(command, [...args], { cwd, env, stdio: ['ignore', fd, fd] })
         .status ?? 1
     );
   } finally {
     closeSync(fd);
   }
 };
+
+const runStage = (
+  stage: string,
+  options: VerifyOptions,
+  logs: string,
+  say: (line: string) => void,
+): number =>
+  stage === 'e2e'
+    ? runE2EStage({
+        dir: options.dir,
+        slug: options.slug,
+        logs,
+        isPortFree,
+        run: runLogged,
+        say,
+      })
+    : runLogged('bun', ['run', stage], options.dir, join(logs, `${stage}.log`));
 
 function verify(options: VerifyOptions): number {
   const logs = `${options.dir}.logs`;
@@ -143,12 +178,7 @@ function verify(options: VerifyOptions): number {
     { stage: 'generate', status: generated === 0 ? 'pass' : 'FAIL' },
   ];
   for (const stage of generated === 0 ? options.stages : []) {
-    const status = runLogged(
-      'bun',
-      ['run', stage],
-      options.dir,
-      join(logs, `${stage}.log`),
-    );
+    const status = runStage(stage, options, logs, say);
     results.push({ stage, status: status === 0 ? 'pass' : 'FAIL' });
     say(`  ${stage}: ${status === 0 ? 'pass' : `FAIL (${stage}.log)`}`);
     if (status !== 0 && !options.keepGoing) break;

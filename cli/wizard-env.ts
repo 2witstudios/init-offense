@@ -44,11 +44,17 @@ export function findFreePort(
   return null;
 }
 
-/** Picks every local port, never handing the same port out twice. */
-export function pickPorts(isFree: (port: number) => boolean): Ports | null {
+/**
+ * Picks every local port, probing up from `starts`, never handing the same
+ * port out twice.
+ */
+export function pickPorts(
+  isFree: (port: number) => boolean,
+  starts: Ports = DEFAULT_PORTS,
+): Ports | null {
   const picked: number[] = [];
   const result: Partial<Record<keyof Ports, number>> = {};
-  for (const [name, start] of Object.entries(DEFAULT_PORTS)) {
+  for (const [name, start] of Object.entries(starts)) {
     const family = name === 'app' ? appPortFamily : (port: number) => [port];
     const port = findFreePort(
       start,

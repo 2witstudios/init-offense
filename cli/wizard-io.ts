@@ -174,7 +174,8 @@ const headlessPrompt: Prompt = {
   pause: async (message) => noTerminal(message),
 };
 
-function isPortFree(port: number): boolean {
+/** True when nothing listens on `port` on the loopback interface. */
+export function isPortFree(port: number): boolean {
   try {
     const listener = Bun.listen({
       hostname: '127.0.0.1',

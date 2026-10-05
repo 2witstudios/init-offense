@@ -43,6 +43,16 @@ describe('findFreePort', () => {
       actual: pickPorts((port) => !busy.has(port)),
       expected: { postgres: 15433, redis: 6380, app: 3002 },
     });
+    assert({
+      given: 'other starting ports, the first postgres one busy',
+      should: 'probe up from those starts instead of the defaults',
+      actual: pickPorts((port) => port !== 25432, {
+        postgres: 25432,
+        redis: 16379,
+        app: 3200,
+      }),
+      expected: { postgres: 25433, redis: 16379, app: 3200 },
+    });
   });
 });
 
