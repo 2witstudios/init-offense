@@ -19,7 +19,7 @@ describe('copy exclusions', () => {
     const paths = [
       'apps/web/src/app/page.tsx',
       'cli/init.ts',
-      'create/bin/create-init-offense.js',
+      'create/bin/init-offense.js',
       'node_modules/x/index.js',
       'apps/web/node_modules/y.js',
       'apps/web/.next/server.js',

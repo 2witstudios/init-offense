@@ -27,8 +27,9 @@ Replace it with your own rules.
 One command, no prior setup (only Node 18+ for `npx`, or Bun):
 
 ```sh
-npx create-init-offense my-app
-# or: bunx create-init-offense my-app   ·   npm create init-offense my-app
+npx init-offense my-app
+# or: bunx init-offense my-app
+# or install it once: npm i -g init-offense  →  init-offense my-app
 ```
 
 A guided setup then takes you from nothing to your new app running on your

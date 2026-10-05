@@ -10,7 +10,7 @@ bun cli/wizard.ts [dir] [--name <slug>] [--display <name>] [--dir <path>] \
   [--owner <owner>] [--no-github] [--no-drive] [--no-run] [--yes] [--dry-run]
 ```
 
-`npx create-init-offense` (the npm package in `create/`) checks Git and
+`init-offense my-app` (the npm package in `create/`, also `npx init-offense`) checks Git and
 Bun, offers to install Bun with the official installer, shallow-clones this
 repository (`INIT_OFFENSE_TEMPLATE` or `--template` take a local path or
 another Git URL instead) and runs this wizard with the remaining arguments.

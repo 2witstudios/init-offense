@@ -1,14 +1,15 @@
-# create-init-offense
+# init-offense
 
 Start a new app from [init-offense](https://github.com/2witstudios/init-offense)
 with one command:
 
 ```sh
-npx create-init-offense my-app
+npx init-offense my-app
 # or
-bunx create-init-offense my-app
-# or
-npm create init-offense my-app
+bunx init-offense my-app
+# or install it once, then run it anywhere
+npm i -g init-offense
+init-offense my-app
 ```
 
 It checks for Git and Bun (offering to install Bun with the official

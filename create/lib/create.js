@@ -1,5 +1,5 @@
 /**
- * create-init-offense: make sure Bun and Git exist, fetch the init-offense
+ * init-offense: make sure Bun and Git exist, fetch the init-offense
  * template, and hand over to its guided setup (`bun cli/wizard.ts`).
  *
  * Plain ESM for Node 18+, no dependencies, so `npx` works on a machine

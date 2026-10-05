@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * `npx create-init-offense my-app` / `bunx create-init-offense my-app` /
- * `npm create init-offense my-app`. The real effects behind lib/create.js.
+ * `init-offense my-app` (installed globally) / `npx init-offense my-app` /
+ * `bunx init-offense my-app`. The real effects behind lib/create.js.
  */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';

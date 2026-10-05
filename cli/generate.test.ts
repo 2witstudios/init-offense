@@ -216,7 +216,7 @@ describe('stripTemplateWiring', () => {
       should: 'drop every cli/ and create/ entry line',
       actual: stripTemplateWiring(
         'knip.jsonc',
-        '".": {\n  "entry": [\n    "cli/init.ts",\n    "cli/verify-generated.ts",\n    "cli/**/*.test.ts",\n    "create/bin/create-init-offense.js",\n    "create/**/*.test.ts",\n    "scenarios/*.ts",\n  ],\n},',
+        '".": {\n  "entry": [\n    "cli/init.ts",\n    "cli/verify-generated.ts",\n    "cli/**/*.test.ts",\n    "create/bin/init-offense.js",\n    "create/**/*.test.ts",\n    "scenarios/*.ts",\n  ],\n},',
       ),
       expected: '".": {\n  "entry": [\n    "scenarios/*.ts",\n  ],\n},',
     });

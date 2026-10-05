@@ -5,7 +5,7 @@
  *   bun cli/wizard.ts [dir] [--name <slug>] [--display <name>] [--dir <path>]
  *     [--owner <owner>] [--no-github] [--no-drive] [--no-run] [--yes] [--dry-run]
  *
- * `npx create-init-offense` (create/) fetches the template and runs this.
+ * `init-offense my-app` (the npm package in create/) fetches the template and runs this.
  * Steps: welcome → questions → tools → accounts → create → run locally.
  * See cli/README.md.
  */

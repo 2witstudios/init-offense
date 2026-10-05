@@ -1,10 +1,10 @@
 {
-  "name": "create-init-offense",
+  "name": "init-offense",
   "version": "0.1.0",
   "description": "Create a new app from the init-offense template: sign-in, Postgres, Redis and a PageSpace drive, running locally in one command.",
   "type": "module",
   "bin": {
-    "create-init-offense": "bin/create-init-offense.js"
+    "init-offense": "bin/init-offense.js"
   },
   "files": [
     "bin",
