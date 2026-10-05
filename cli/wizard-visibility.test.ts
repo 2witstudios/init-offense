@@ -115,18 +115,33 @@ describe('visibility flags', () => {
 });
 
 describe('wizard visibility', () => {
-  test('--yes on a free plan defaults to public', async () => {
+  test('--yes on a free plan stays private', async () => {
     const { code, text } = await dryRun('free');
     assert({
-      given: 'a free GitHub plan and no visibility flag',
-      should: 'explain, create a public repository and print no warning',
+      given: 'a free GitHub plan, --yes and no visibility flag',
+      should:
+        'never make code public implicitly: create a private repository and print the fix',
       actual: [
         code,
-        text.includes('GitHub repository: yes, public'),
+        text.includes('GitHub repository: yes, private'),
+        text.includes('gh repo create octo/viz --private'),
+        text.includes(FIX),
+      ],
+      expected: [0, true, true, true],
+    });
+  });
+
+  test('--public on a free plan creates a public repository', async () => {
+    const { code, text } = await dryRun('free', ['--public']);
+    assert({
+      given: 'a free GitHub plan and --public',
+      should: 'create a public repository and print no warning',
+      actual: [
+        code,
         text.includes('gh repo create octo/viz --public'),
         text.includes(FIX),
       ],
-      expected: [0, true, true, false],
+      expected: [0, true, false],
     });
   });
 

@@ -57,7 +57,7 @@ rulesets (the merge rules `bun github:rules --apply` sets: CI and the
 review record must pass before merging) only on public repositories,
 and GitHub Actions minutes are free only there. The wizard reads your plan
 (`gh api user --jq .plan.name`) and suggests public on `free`, private
-otherwise; you always choose. A private repository on a free plan works,
+otherwise; you always choose, and `--yes` never makes code public without `--public`. A private repository on a free plan works,
 but its merge rules are not enforced and CI may stop when the minutes run
 out; the wizard's summary says so, and
 `gh repo edit <owner>/<repo> --visibility public --accept-visibility-change-consequences`

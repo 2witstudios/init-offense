@@ -174,7 +174,9 @@ async function askDisplay(deps: WizardDeps, flags: Flags): Promise<string> {
   const fallback = flags.name
     ? defaultDisplay(flags.name)
     : defaultDisplay(defaultName(flags) ?? 'my-app');
-  if (flags.yes) return fallback;
+  // Code is never made public without an explicit choice: --yes keeps it
+  // private, and the summary explains how to make it public.
+  if (flags.yes) return 'private';
   return deps.prompt.text('What is your app called?', fallback, displayProblem);
 }
 
@@ -243,7 +245,9 @@ async function askVisibility(
   if (flags.visibility) return flags.visibility;
   const fallback = defaultVisibility(plan);
   visibilityExplanation(plan).forEach((line) => deps.log(line));
-  if (flags.yes) return fallback;
+  // Code is never made public without an explicit choice: --yes keeps it
+  // private, and the summary explains how to make it public.
+  if (flags.yes) return 'private';
   return deps.prompt.select<Visibility>(
     'Should the repository be public or private?',
     [

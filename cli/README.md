@@ -44,7 +44,7 @@ local run (`wizard-run.ts`, ports and `.env` in `wizard-env.ts`).
   with `gh auth refresh -s read:user`. It then explains the trade-off and asks
   `Should the repository be public or private?`. The suggestion
   (`defaultVisibility` in `wizard-plan.ts`) is public on `free` and private
-  otherwise; `--yes` takes it, `--public` / `--private` (mutually exclusive,
+  otherwise; `--yes` never makes code public (it creates a private repository and the summary prints the one-line fix), `--public` / `--private` (mutually exclusive,
   refused with `--no-github`) skip the question. On a free plan GitHub
   enforces rulesets only on public repositories (`bun github:rules --apply`
   answers 403 "Upgrade to GitHub Pro" on a private one) and Actions minutes
