@@ -49,9 +49,10 @@ export function isTestFilePath(relativePath: string): boolean {
 export function classifyTestFile(relativePath: string): TestTier {
   // `bun test <dir>` globs *.test.ts and *.test.tsx alike.
   if (/^scripts\/.+\.test\.tsx?$/.test(relativePath)) return 'root-script';
-  // The template initializer's own suites (`bun test ./cli` in the root
-  // "test" script); generated projects delete cli/ together with that run.
-  if (/^cli\/.+\.test\.tsx?$/.test(relativePath)) return 'root-script';
+  // The template initializer's and npm bootstrapper's own suites
+  // (`bun test ./cli` and `bun test ./create` in the root "test" script);
+  // generated projects delete cli/ and create/ together with those runs.
+  if (/^(cli|create)\/.+\.test\.tsx?$/.test(relativePath)) return 'root-script';
   if (relativePath === 'eslint.config.test.ts') return 'root-config';
   if (/^(apps|packages)\/[^/]+\/integration\//.test(relativePath))
     return 'integration';

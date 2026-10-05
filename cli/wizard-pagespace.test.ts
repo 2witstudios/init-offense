@@ -141,3 +141,23 @@ describe('withTemporaryKey', () => {
     });
   });
 });
+
+describe('revoking when the key list fails', () => {
+  test('unknown key', async () => {
+    const fake = fakeDeps({
+      probes: { 'pagespace keys list --json': { code: 1, stdout: '' } },
+      capture: () => ({ code: 0, stdout: `PAGESPACE_TOKEN=${TOKEN}\n` }),
+    });
+    await withTemporaryKey(fake.deps, 'widget', false, () => {});
+    assert({
+      given: 'pagespace keys list failing after the mint',
+      should: 'not claim the key is gone, and tell the person how to revoke it',
+      actual: [
+        fake.ran.slice(1),
+        fake.logs.some((line) => line.includes('Could not revoke it.')),
+        fake.logs.some((line) => line.includes('nothing to revoke')),
+      ],
+      expected: [['pagespace logout --key=widget-setup'], true, false],
+    });
+  });
+});

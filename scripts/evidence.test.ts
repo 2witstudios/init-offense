@@ -50,6 +50,7 @@ describe('classifyTestFile', () => {
         unit: classifyTestFile('packages/protocol/src/index.test.ts'),
         rootScript: classifyTestFile('scripts/doctor.test.ts'),
         cli: classifyTestFile('cli/init.test.ts'),
+        create: classifyTestFile('create/create.test.ts'),
         rootConfig: classifyTestFile('eslint.config.test.ts'),
         integration: classifyTestFile(
           'apps/web/integration/foundation.integration.ts',
@@ -60,6 +61,7 @@ describe('classifyTestFile', () => {
         unit: 'unit',
         rootScript: 'root-script',
         cli: 'root-script',
+        create: 'root-script',
         rootConfig: 'root-config',
         integration: 'integration',
         e2e: 'e2e',

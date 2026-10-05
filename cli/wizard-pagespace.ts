@@ -74,13 +74,19 @@ function revokeKey(deps: WizardDeps, name: string, dryRun: boolean): boolean {
   deps.log(`\nRemoving the temporary PageSpace key "${name}"…`);
   const listCommand: Command = ['pagespace', 'keys', 'list', '--json'];
   deps.log(`  ${dryRun ? '[dry run] ' : ''}${display(listCommand)}`);
+  const listed = dryRun
+    ? { code: 0, stdout: '' }
+    : deps.runner.probe(listCommand);
+  // undefined: the list itself failed, so whether the key exists is unknown.
   const id = dryRun
     ? '<key id>'
-    : keyIdByName(deps.runner.probe(listCommand).stdout, name);
+    : listed.code === 0
+      ? keyIdByName(listed.stdout, name)
+      : undefined;
   let revoked = id === null;
   if (id === null)
     deps.log('  No key by that name exists on PageSpace; nothing to revoke.');
-  else
+  else if (id !== undefined)
     revoked =
       act(deps, dryRun, ['pagespace', 'keys', 'revoke', id, '--yes']) === 0;
   act(deps, dryRun, ['pagespace', 'logout', `--key=${name}`]);
