@@ -22,6 +22,41 @@ new product with the boring, hard parts already done and verified:
 The product domain is a deliberately tiny placeholder in `packages/domain`.
 Replace it with your own rules.
 
+## Quickstart
+
+One command, no prior setup (only Node 18+ for `npx`, or Bun):
+
+```sh
+npx create-init-offense my-app
+# or: bunx create-init-offense my-app   ·   npm create init-offense my-app
+```
+
+A guided setup then takes you from nothing to your new app running on your
+computer, in about 5 to 10 minutes. Every command is shown before it runs.
+
+1. **Your app.** Its name, a short name for code and URLs, the folder, and
+   whether to create a GitHub repository and a PageSpace drive.
+2. **Tools.** Checks Git, Bun, Docker (running, not just installed), the
+   GitHub CLI and the PageSpace CLI, and offers to install what is missing
+   (Homebrew and OrbStack on macOS, apt or dnf on Linux; on Windows, use
+   WSL).
+3. **Accounts.** Signs you in to GitHub (`gh auth login`) and PageSpace
+   (`pagespace login`), opening the PageSpace sign-up page if you have no
+   account yet.
+4. **Create.** Generates the project, creates the private GitHub
+   repository, provisions the project's PageSpace drive with a temporary
+   key that is revoked afterwards, and pushes (asking first).
+5. **Run.** Picks free local ports, starts Postgres and Redis
+   (`bun slot:up`), starts `bun dev` and opens the sign-in page and your
+   drive. Sign-in links print in that terminal as `[dev-mail]` lines until
+   you add a Resend key.
+
+Useful flags: `--yes` (accept the defaults), `--name <slug>`,
+`--display <name>`, `--owner <github owner>`, `--no-github`,
+`--no-drive`, `--no-run` and `--dry-run` (show every action, run
+none). From a checkout of this template the same setup is
+`bun cli/wizard.ts my-app`; see `cli/README.md`.
+
 ## Stack
 
 Bun · TypeScript (strict) · Turborepo · Next.js (App Router) · React ·
@@ -29,9 +64,10 @@ Tailwind v4 · PostgreSQL 18 + Drizzle · Redis 8 (Bun native client) · Zod ·
 Pino · OpenTelemetry API · Better Auth · Resend · Playwright · Docker
 Compose · GitHub Actions · Fly.io.
 
-## Quickstart
+## Advanced: the generator CLI
 
-Create a project from the template checkout:
+The wizard is built on a non-interactive generator. Create a project from
+the template checkout:
 
 ```sh
 bun cli/init.ts new ../widget --name widget

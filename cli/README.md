@@ -1,6 +1,47 @@
 # init-offense CLI
 
-Generates a new project from this template.
+Generates a new project from this template, either guided (the wizard) or
+non-interactively (`init.ts new`).
+
+## The wizard
+
+```sh
+bun cli/wizard.ts [dir] [--name <slug>] [--display <name>] [--dir <path>] \
+  [--owner <owner>] [--no-github] [--no-drive] [--no-run] [--yes] [--dry-run]
+```
+
+`npx create-init-offense` (the npm package in `create/`) checks Git and
+Bun, offers to install Bun with the official installer, shallow-clones this
+repository (`INIT_OFFENSE_TEMPLATE` or `--template` take a local path or
+another Git URL instead) and runs this wizard with the remaining arguments.
+
+Steps, each shown before it runs: questions (`wizard-questions.ts`), a
+tool checklist with consented installs (`wizard-prereqs.ts`, decision
+table in `wizard-plan.ts`), GitHub and PageSpace sign-in
+(`wizard-accounts.ts`), generation through `createProject` from
+`init.ts` plus the drive bootstrap and push (`wizard-create.ts`), and the
+local run (`wizard-run.ts`, ports and `.env` in `wizard-env.ts`).
+
+- **Temporary key.** The drive bootstrap needs an unscoped key, so the
+  wizard runs `pagespace keys create --all-drives --name <slug>-setup
+--show-token --yes` (browser consent), reads the single
+  `PAGESPACE_TOKEN=mcp_…` stdout line without displaying it, passes it to
+  `bun scripts/drive-bootstrap.ts [--github]` as
+  `PAGESPACE_BOOTSTRAP_TOKEN`, and in a `finally` revokes it
+  (`pagespace keys list --json` → `pagespace keys revoke <id> --yes`) and
+  forgets the CLI's local copy (`pagespace logout --key=<slug>-setup`).
+- **Ports.** Postgres from 15432, Redis from 6379, the app from 3000 and
+  realtime from 3011, each moved up to the next free port. The stack ports
+  go to `.env` as `<SLUG>_POSTGRES_PORT` / `<SLUG>_REDIS_PORT` with every
+  Postgres and Redis URL before `bun slot:up`; a moved app port is written
+  after it, because `slot:up` resets the main checkout's app ports.
+- **Dry run.** `--dry-run` still runs read-only probes (versions,
+  `docker info`, `gh auth status`, `pagespace whoami`) but executes,
+  writes and opens nothing.
+- **No terminal.** Without a TTY every question fails with the flag to pass;
+  `--yes --name <slug>` answers all of them.
+
+## `init.ts new`
 
 ```sh
 bun cli/init.ts new <dir> --name <slug> [--display "Widget"] [--repo owner/name] \
@@ -26,7 +67,7 @@ bun cli/init.ts new <dir> --name <slug> [--display "Widget"] [--repo owner/name]
 
 1. **Copy.** The file list is `git ls-files --cached --others --exclude-standard`
    of the template (a filesystem walk when the template is not a git
-   repository), minus `.git`, `cli/`, `node_modules`, `.turbo`, `.next`,
+   repository), minus `.git`, `cli/`, `create/`, `node_modules`, `.turbo`, `.next`,
    `verify-logs`, `test-results`, `playwright-report`, `.env`, `.env.local`,
    `.env.agent`, `.pu/*` (except `config.yaml` and `agent-context.md`),
    `.claude/worktrees` and `*.tsbuildinfo`. Binary files (a NUL byte in the
