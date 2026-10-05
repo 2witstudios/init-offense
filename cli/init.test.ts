@@ -85,6 +85,32 @@ describe('main', () => {
     });
   });
 
+  test('--public creates a public repository', () => {
+    const { deps, commands } = fakeDeps(true);
+    const target = join(scratch, 'public');
+    main(
+      [
+        'new',
+        target,
+        '--name',
+        'widget-app',
+        '--owner',
+        'someone',
+        '--public',
+        '--no-install',
+        '--no-drive',
+        '--yes',
+      ],
+      deps,
+    );
+    assert({
+      given: '--public',
+      should: 'pass --public to gh repo create',
+      actual: commands.at(-1),
+      expected: `gh repo create someone/widget-app --public --source ${target} --remote origin`,
+    });
+  });
+
   test('a failing command stops the flow', () => {
     const { deps, logs } = fakeDeps(true);
     const failing: Deps = { ...deps, run: () => 1 };

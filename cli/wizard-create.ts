@@ -19,6 +19,7 @@ const projectOptions = (accounts: Accounts): Options => ({
   without: [],
   drive: false, // the wizard bootstraps the drive itself, with its temporary key
   github: accounts.github,
+  visibility: accounts.visibility,
   install: true,
   yes: true, // every action was confirmed in the plan below
 });
@@ -29,7 +30,7 @@ function planLines(accounts: Accounts): string[] {
     `Copy the template into ${accounts.target} and name it "${accounts.display}" (${accounts.slug})`,
     'Install its dependencies, generate local secrets and make the first commit',
     ...(accounts.github
-      ? [`Create the private GitHub repository ${repo}`]
+      ? [`Create the ${accounts.visibility} GitHub repository ${repo}`]
       : []),
     ...(accounts.drive
       ? [
@@ -62,7 +63,7 @@ function generate(deps: WizardDeps, flags: Flags, accounts: Accounts): void {
       deps.log(`  [dry run] ${line.replace('<slug>', accounts.slug)}`);
     if (accounts.github)
       deps.log(
-        `  [dry run] gh repo create ${options.repo} --private --source ${options.target} --remote origin`,
+        `  [dry run] gh repo create ${options.repo} --${options.visibility} --source ${options.target} --remote origin`,
       );
     return;
   }

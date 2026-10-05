@@ -35,8 +35,9 @@ npx init-offense my-app
 A guided setup then takes you from nothing to your new app running on your
 computer, in about 5 to 10 minutes. Every command is shown before it runs.
 
-1. **Your app.** Its name, a short name for code and URLs, the folder, and
-   whether to create a GitHub repository and a PageSpace drive.
+1. **Your app.** Its name, a short name for code and URLs, the folder,
+   whether to create a GitHub repository (and whether it is public or
+   private) and a PageSpace drive.
 2. **Tools.** Checks Git, Bun, Docker (running, not just installed), the
    GitHub CLI and the PageSpace CLI, and offers to install what is missing
    (Homebrew and OrbStack on macOS, apt or dnf on Linux; on Windows, use
@@ -44,16 +45,27 @@ computer, in about 5 to 10 minutes. Every command is shown before it runs.
 3. **Accounts.** Signs you in to GitHub (`gh auth login`) and PageSpace
    (`pagespace login`), opening the PageSpace sign-up page if you have no
    account yet.
-4. **Create.** Generates the project, creates the private GitHub
-   repository, provisions the project's PageSpace drive with a temporary
+4. **Create.** Generates the project, creates the GitHub repository, provisions the project's PageSpace drive with a temporary
    key that is revoked afterwards, and pushes (asking first).
 5. **Run.** Picks free local ports, starts Postgres and Redis
    (`bun slot:up`), starts `bun dev` and opens the sign-in page and your
    drive. Sign-in links print in that terminal as `[dev-mail]` lines until
    you add a Resend key.
 
+**Public or private?** On a free GitHub plan, GitHub enforces branch
+rulesets (the merge rules `bun github:rules --apply` sets: CI and the
+review record must pass before merging) only on public repositories,
+and GitHub Actions minutes are free only there. The wizard reads your plan
+(`gh api user --jq .plan.name`) and suggests public on `free`, private
+otherwise; you always choose. A private repository on a free plan works,
+but its merge rules are not enforced and CI may stop when the minutes run
+out; the wizard's summary says so, and
+`gh repo edit <owner>/<repo> --visibility public --accept-visibility-change-consequences`
+(or GitHub Pro) fixes it.
+
 Useful flags: `--yes` (accept the defaults), `--name <slug>`,
-`--display <name>`, `--owner <github owner>`, `--no-github`,
+`--display <name>`, `--owner <github owner>`, `--public` or
+`--private`, `--no-github`,
 `--no-drive`, `--no-run` and `--dry-run` (show every action, run
 none). From a checkout of this template the same setup is
 `bun cli/wizard.ts my-app`; see `cli/README.md`.
@@ -83,6 +95,7 @@ Flags:
 | `--repo <owner/name>`     | GitHub repository slug recorded in `project.config.json`               |
 | `--without realtime,docs` | Leave out optional parts (the realtime service, the docs pipeline)     |
 | `--no-drive`              | Skip PageSpace drive bootstrap                                         |
+| `--public` / `--private`  | Repository visibility (default private); see "Public or private?"      |
 | `--no-github`             | Skip creating the GitHub repository and its rulesets                   |
 
 Then, in the new project:

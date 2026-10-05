@@ -3,6 +3,7 @@
  * run needs, and how each missing tool is installed on each platform.
  * No I/O; every decision here is a table the tests pin.
  */
+import type { Visibility } from './args';
 import { slugProblem } from './rename';
 
 export type Command = readonly string[];
@@ -177,3 +178,57 @@ export const shown = (command: Command): string =>
       /^[\w@%+=:,./-]+$/.test(part) ? part : `'${part.replace(/'/g, "'\\''")}'`,
     )
     .join(' ');
+
+/** `gh api user --jq .plan.name` output as a plan name, or null. */
+export const githubPlan = (code: number, stdout: string): string | null => {
+  const plan = stdout.trim().toLowerCase();
+  return code === 0 && /^[a-z_ -]+$/.test(plan) ? plan : null;
+};
+
+/**
+ * The suggested repository visibility: public on a free GitHub plan (free
+ * Actions minutes, and branch rulesets GitHub only enforces on public repos
+ * there), private on a paid plan or when the plan is unknown.
+ */
+export const defaultVisibility = (plan: string | null): Visibility =>
+  plan === 'free' ? 'public' : 'private';
+
+/** The trade-off, in plain words, shown before the question. */
+export function visibilityExplanation(plan: string | null): string[] {
+  return [
+    '\nYour GitHub repository can be public or private:',
+    '  • Public: anyone can read your code. CI minutes are free, and the merge',
+    '    rules (checks and a review must pass before merging) are enforced.',
+    '  • Private: only you, and people you invite, can see it. On a free GitHub',
+    "    plan the merge rules can't be enforced and CI minutes are limited.",
+    ...(plan === null
+      ? [
+          '  Could not read your GitHub plan (gh needs the read:user scope:',
+          '  gh auth refresh -s read:user), so private is suggested. If your plan',
+          '  is free, public is usually the better choice.',
+        ]
+      : [
+          `  Your GitHub plan: ${plan}, so ${defaultVisibility(plan)} is suggested.`,
+        ]),
+  ];
+}
+
+/**
+ * The warning for a private repository on a free plan (or on a plan gh
+ * could not read, worded as a condition), with its fix.
+ */
+export function privateOnFreeNote(
+  repo: string,
+  visibility: Visibility,
+  plan: string | null,
+): string[] {
+  if (visibility !== 'private' || (plan !== 'free' && plan !== null)) return [];
+  return [
+    plan === 'free'
+      ? `\nNote: ${repo} is private on a free GitHub plan, so its merge rules`
+      : `\nNote: if your GitHub plan is free, ${repo} being private means its merge rules`,
+    '(`bun github:rules --apply`) cannot be enforced and CI minutes are limited.',
+    `To make it public: gh repo edit ${repo} --visibility public --accept-visibility-change-consequences`,
+    '(or upgrade to GitHub Pro).',
+  ];
+}

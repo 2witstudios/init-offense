@@ -24,6 +24,7 @@ describe('parseCli', () => {
         without: [],
         drive: true,
         github: true,
+        visibility: 'private',
         install: true,
         yes: false,
       },
@@ -45,6 +46,7 @@ describe('parseCli', () => {
         'realtime, docs',
         '--no-drive',
         '--no-github',
+        '--public',
         '--no-install',
         '--yes',
       ],
@@ -63,6 +65,7 @@ describe('parseCli', () => {
         without: ['realtime', 'docs'],
         drive: false,
         github: false,
+        visibility: 'public',
         install: false,
         yes: true,
       },
@@ -92,7 +95,7 @@ describe('parseCli', () => {
     const isError = (argv: string[]) => 'error' in parseCli(argv, noGh);
     assert({
       given:
-        'a bad command, a missing dir, extra args, a bad slug, the placeholder slug, a bad display, a bad repo and an unknown flag',
+        'a bad command, a missing dir, extra args, a bad slug, the placeholder slug, a bad display, a bad repo, an unknown flag and both visibilities',
       should: 'return an error for each',
       actual: [
         isError(['make', 'out', '--name', 'w']),
@@ -103,8 +106,9 @@ describe('parseCli', () => {
         isError(['new', 'out', '--name', 'w', '--display', 'a"b']),
         isError(['new', 'out', '--name', 'w', '--repo', 'nope']),
         isError(['new', 'out', '--name', 'w', '--frobnicate']),
+        isError(['new', 'out', '--name', 'w', '--public', '--private']),
       ],
-      expected: [true, true, true, true, true, true, true, true],
+      expected: [true, true, true, true, true, true, true, true, true],
     });
   });
 });

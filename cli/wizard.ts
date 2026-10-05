@@ -3,7 +3,7 @@
  * The guided way to start a project from this template:
  *
  *   bun cli/wizard.ts [dir] [--name <slug>] [--display <name>] [--dir <path>]
- *     [--owner <owner>] [--no-github] [--no-drive] [--no-run] [--yes] [--dry-run]
+ *     [--owner <owner>] [--public | --private] [--no-github] [--no-drive] [--no-run] [--yes] [--dry-run]
  *
  * `init-offense my-app` (the npm package in create/) fetches the template and runs this.
  * Steps: welcome → questions → tools → accounts → create → run locally.

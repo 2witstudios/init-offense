@@ -3,7 +3,12 @@
  * PageSpace (as their answers need), and settle the repository owner.
  */
 import { act, WizardStop, type WizardDeps } from './wizard-deps';
-import { ownerProblem, type Answers, type Flags } from './wizard-questions';
+import {
+  ownerProblem,
+  probePlan,
+  type Answers,
+  type Flags,
+} from './wizard-questions';
 
 const PAGESPACE_URL = 'https://pagespace.ai';
 const PAGESPACE_SIGNUP_URL = `${PAGESPACE_URL}/auth/signup`;
@@ -50,6 +55,9 @@ async function signInToGithub(deps: WizardDeps, flags: Flags): Promise<void> {
       '--web',
       '--git-protocol',
       'https',
+      // read:user lets `gh api user` report the plan (free, pro, …).
+      '--scopes',
+      'read:user',
     ]) !== 0
   )
     throw new WizardStop(
@@ -131,10 +139,12 @@ export async function connectAccounts(
     );
     return { ...answers, owner };
   }
+  let { plan } = answers;
   if (answers.github) {
     await signInToGithub(deps, flags);
     owner = await chooseOwner(deps, flags);
+    plan ??= probePlan(deps); // gh may only now be installed and signed in
   }
   if (answers.drive) await signInToPagespace(deps, flags);
-  return { ...answers, owner };
+  return { ...answers, owner, plan };
 }

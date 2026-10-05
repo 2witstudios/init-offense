@@ -146,6 +146,8 @@ describe('runLocally', () => {
       slug: 'widget',
       target,
       github: false,
+      visibility: 'private' as const,
+      plan: null,
       drive: true,
       run: true,
       owner: 'octo',
@@ -218,6 +220,8 @@ describe('checkPrerequisites', () => {
     slug: 'widget',
     target: '/work/widget',
     github: true,
+    visibility: 'private' as const,
+    plan: null,
     drive: false,
     run: false,
   };

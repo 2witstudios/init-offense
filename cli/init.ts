@@ -4,7 +4,7 @@
  *
  *   bun cli/init.ts new <dir> --name <slug> [--display "Widget"]
  *     [--repo owner/name] [--owner <gh owner>] [--without realtime,docs]
- *     [--no-drive] [--no-github] [--no-install] [--yes]
+ *     [--public | --private] [--no-drive] [--no-github] [--no-install] [--yes]
  *
  * See cli/README.md.
  */
@@ -179,7 +179,7 @@ function installStep(context: Context): boolean {
 
 function githubStep(context: Context): boolean {
   const { options, deps } = context;
-  const question = `Create private GitHub repository ${options.repo}?`;
+  const question = `Create ${options.visibility} GitHub repository ${options.repo}?`;
   if (!options.yes && !deps.confirm(question)) {
     deps.log('Skipped GitHub repository creation.');
     return true;
@@ -192,7 +192,7 @@ function githubStep(context: Context): boolean {
     'repo',
     'create',
     options.repo,
-    '--private',
+    `--${options.visibility}`,
     '--source',
     options.target,
     '--remote',

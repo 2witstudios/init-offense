@@ -13,6 +13,7 @@ import {
   stackEnv,
   type Ports,
 } from './wizard-env';
+import { privateOnFreeNote } from './wizard-plan';
 import type { Flags } from './wizard-questions';
 
 const READY_TIMEOUT_MS = 180_000;
@@ -53,11 +54,18 @@ function summary(
     `  • ${accounts.display} in ${accounts.target}`,
     ...(accounts.github
       ? [
-          `  • GitHub repository ${repo}${created.pushed ? '' : ' (not pushed yet)'}`,
+          `  • ${accounts.visibility === 'public' ? 'Public' : 'Private'} GitHub repository ${repo}${created.pushed ? '' : ' (not pushed yet)'}`,
         ]
       : []),
     ...(created.drive
       ? [`  • PageSpace drive ${drive ?? '(see project.config.json)'}`]
+      : []),
+    ...(accounts.github
+      ? privateOnFreeNote(
+          `${accounts.owner}/${accounts.slug}`,
+          accounts.visibility,
+          accounts.plan,
+        )
       : []),
     '\nOptional next steps, whenever you are ready:',
     ...OPTIONAL_STEPS.map((line, index) => `  ${index + 1}. ${line}`),

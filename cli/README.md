@@ -7,7 +7,8 @@ non-interactively (`init.ts new`).
 
 ```sh
 bun cli/wizard.ts [dir] [--name <slug>] [--display <name>] [--dir <path>] \
-  [--owner <owner>] [--no-github] [--no-drive] [--no-run] [--yes] [--dry-run]
+  [--owner <owner>] [--public | --private] [--no-github] [--no-drive] [--no-run] \
+  [--yes] [--dry-run]
 ```
 
 `init-offense my-app` (the npm package in `create/`, also `npx init-offense`) checks Git and
@@ -35,6 +36,22 @@ local run (`wizard-run.ts`, ports and `.env` in `wizard-env.ts`).
   go to `.env` as `<SLUG>_POSTGRES_PORT` / `<SLUG>_REDIS_PORT` with every
   Postgres and Redis URL before `bun slot:up`; a moved app port is written
   after it, because `slot:up` resets the main checkout's app ports.
+- **Visibility.** When GitHub is chosen, step 1 probes
+  `gh api user --jq .plan.name` (read-only; re-probed after sign-in when
+  gh could not answer yet). GitHub reports the plan only to a token with
+  the `read:user` scope, which `gh auth login` does not grant by default:
+  the wizard's own sign-in asks for it, and an existing login can add it
+  with `gh auth refresh -s read:user`. It then explains the trade-off and asks
+  `Should the repository be public or private?`. The suggestion
+  (`defaultVisibility` in `wizard-plan.ts`) is public on `free` and private
+  otherwise; `--yes` takes it, `--public` / `--private` (mutually exclusive,
+  refused with `--no-github`) skip the question. On a free plan GitHub
+  enforces rulesets only on public repositories (`bun github:rules --apply`
+  answers 403 "Upgrade to GitHub Pro" on a private one) and Actions minutes
+  are free only there, so a private repository on `free` (or on a plan gh
+  could not read, worded "if your GitHub plan is free") gets a note in the
+  final summary with the one-line fix:
+  `gh repo edit <owner>/<slug> --visibility public --accept-visibility-change-consequences`.
 - **Dry run.** `--dry-run` still runs read-only probes (versions,
   `docker info`, `gh auth status`, `pagespace whoami`) but executes,
   writes and opens nothing.
@@ -45,8 +62,8 @@ local run (`wizard-run.ts`, ports and `.env` in `wizard-env.ts`).
 
 ```sh
 bun cli/init.ts new <dir> --name <slug> [--display "Widget"] [--repo owner/name] \
-  [--owner <gh owner>] [--without realtime,docs] [--no-drive] [--no-github] \
-  [--no-install] [--yes]
+  [--owner <gh owner>] [--without realtime,docs] [--public | --private] \
+  [--no-drive] [--no-github] [--no-install] [--yes]
 ```
 
 | Flag                  | Meaning                                                                                                                                        |
@@ -57,7 +74,9 @@ bun cli/init.ts new <dir> --name <slug> [--display "Widget"] [--repo owner/name]
 | `--repo <owner/name>` | GitHub repository. Defaults to `<owner>/<slug>`.                                                                                               |
 | `--without <list>`    | Drop modules declared in `cli/modules.json` (experimental, see below).                                                                         |
 | `--no-install`        | Skip `git init -b main`, `bun install`, `bun auth:provision` and the first commit.                                                             |
-| `--no-github`         | Skip `gh repo create <repo> --private --source <dir> --remote origin`.                                                                         |
+| `--public`            | Create the repository public (free Actions minutes and enforceable rulesets on a free GitHub plan). Not with `--private`.                      |
+| `--private`           | Create the repository private (the default).                                                                                                   |
+| `--no-github`         | Skip `gh repo create <repo> --private\|--public --source <dir> --remote origin`.                                                               |
 | `--no-drive`          | Skip `bun scripts/drive-bootstrap.ts`.                                                                                                         |
 | `--yes`               | Do not ask before creating the GitHub repository or the drive.                                                                                 |
 
@@ -104,9 +123,12 @@ bun cli/init.ts new <dir> --name <slug> [--display "Widget"] [--repo owner/name]
    `git init -b main`, `bun install`, `bun auth:provision`,
    `git add -A && git commit -m "chore: initialize <slug> from init-offense"`.
 6. **GitHub** (unless `--no-github`, confirmed unless `--yes`):
-   `gh repo create <repo> --private --source <dir> --remote origin`. It does
-   not push or apply rulesets; run `git push -u origin main` and then
-   `bun github:rules --apply` yourself.
+   `gh repo create <repo> --private --source <dir> --remote origin`
+   (or `--public`). It does not push or apply rulesets; run
+   `git push -u origin main` and then `bun github:rules --apply` yourself.
+   On a free GitHub plan that apply works only on a public repository: on
+   a private one GitHub answers 403 "Upgrade to GitHub Pro" and
+   `github:rules` exits 1 with the fix instead of succeeding.
 7. **Drive** (unless `--no-drive`, confirmed unless `--yes`):
    `bun scripts/drive-bootstrap.ts`, or an instruction when the script is
    missing.

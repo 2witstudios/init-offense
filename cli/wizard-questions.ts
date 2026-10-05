@@ -4,10 +4,16 @@
  */
 import { basename, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import type { Visibility } from './args';
 import { targetProblem } from './copy';
 import { defaultDisplay, displayProblem, slugProblem } from './rename';
 import { WizardStop, type WizardDeps } from './wizard-deps';
-import { suggestSlug } from './wizard-plan';
+import {
+  defaultVisibility,
+  githubPlan,
+  suggestSlug,
+  visibilityExplanation,
+} from './wizard-plan';
 
 export type Flags = {
   readonly dir?: string | undefined;
@@ -15,6 +21,7 @@ export type Flags = {
   readonly display?: string | undefined;
   readonly owner?: string | undefined;
   readonly github?: boolean | undefined;
+  readonly visibility?: Visibility | undefined;
   readonly drive?: boolean | undefined;
   readonly run?: boolean | undefined;
   readonly yes: boolean;
@@ -26,6 +33,10 @@ export type Answers = {
   readonly slug: string;
   readonly target: string;
   readonly github: boolean;
+  /** The repository's visibility; meaningful only when `github`. */
+  readonly visibility: Visibility;
+  /** The signed-in GitHub account's plan (free, pro, …) when known. */
+  readonly plan: string | null;
   readonly drive: boolean;
   readonly run: boolean;
 };
@@ -39,6 +50,9 @@ Options:
   --display <name>   the app's name as people see it, e.g. "Widget App"
   --dir <path>       where to create it (default: ./<slug>)
   --owner <owner>    GitHub account or organization for the repository
+  --public           make the GitHub repository public (the default on a
+                     free GitHub plan: free CI minutes and enforced merge rules)
+  --private          make the GitHub repository private (the default otherwise)
   --no-github        do not create a GitHub repository
   --no-drive         do not create a PageSpace drive
   --no-run           do not start the app at the end
@@ -54,6 +68,8 @@ const OPTIONS = {
   dir: { type: 'string' },
   owner: { type: 'string' },
   github: { type: 'boolean' },
+  public: { type: 'boolean' },
+  private: { type: 'boolean' },
   drive: { type: 'boolean' },
   run: { type: 'boolean' },
   yes: { type: 'boolean', short: 'y', default: false },
@@ -80,9 +96,19 @@ const flagProblem = (flags: Flags): string | null => {
     const found = value === undefined ? null : problem(value);
     if (found) return `${flag} ${found}`;
   }
+  if (flags.visibility && flags.github === false)
+    return `--${flags.visibility} needs a GitHub repository; drop --no-github`;
   if (flags.yes && !flags.name && !flags.dir)
     return '--yes needs --name <slug> or a directory to name the app after';
   return null;
+};
+
+const visibilityFlag = (values: {
+  public?: boolean | undefined;
+  private?: boolean | undefined;
+}): Visibility | undefined => {
+  if (values.public) return 'public';
+  return values.private ? 'private' : undefined;
 };
 
 /** Parses wizard argv into flags, help or a plain-language error. */
@@ -104,12 +130,15 @@ export function parseWizardFlags(
   if (values.help) return { help: true };
   if (positionals.length > 1)
     return { error: `unexpected arguments: ${positionals.slice(1).join(' ')}` };
+  if (values.public && values.private)
+    return { error: '--public and --private cannot be used together' };
   const flags: Flags = {
     dir: values.dir ?? positionals[0],
     name: values.name,
     display: values.display,
     owner: values.owner,
     github: values.github,
+    visibility: visibilityFlag(values),
     drive: values.drive,
     run: values.run,
     yes: values.yes,
@@ -194,7 +223,38 @@ const askYes = (
     ? Promise.resolve(value ?? true)
     : deps.prompt.confirm(question, true);
 
-/** Step 2: what to create and where. */
+/** The signed-in account's GitHub plan, when gh can already tell. */
+export const probePlan = (deps: WizardDeps): string | null => {
+  const { code, stdout } = deps.runner.probe([
+    'gh',
+    'api',
+    'user',
+    '--jq',
+    '.plan.name',
+  ]);
+  return githubPlan(code, stdout);
+};
+
+async function askVisibility(
+  deps: WizardDeps,
+  flags: Flags,
+  plan: string | null,
+): Promise<Visibility> {
+  if (flags.visibility) return flags.visibility;
+  const fallback = defaultVisibility(plan);
+  visibilityExplanation(plan).forEach((line) => deps.log(line));
+  if (flags.yes) return fallback;
+  return deps.prompt.select<Visibility>(
+    'Should the repository be public or private?',
+    [
+      { value: 'public', label: 'Public' },
+      { value: 'private', label: 'Private' },
+    ],
+    fallback,
+  );
+}
+
+/** Step 1: what to create and where. */
 export async function askProject(
   deps: WizardDeps,
   flags: Flags,
@@ -207,8 +267,12 @@ export async function askProject(
     deps,
     flags,
     flags.github,
-    'Create a private GitHub repository for it? (recommended; GitHub stores your code online)',
+    'Create a GitHub repository for it? (recommended; GitHub stores your code online)',
   );
+  const plan = github ? probePlan(deps) : null;
+  const visibility = github
+    ? await askVisibility(deps, flags, plan)
+    : 'private';
   const drive = await askYes(
     deps,
     flags,
@@ -217,7 +281,16 @@ export async function askProject(
   );
   deps.log(`  App: "${display}" (${slug}) in ${target}`);
   deps.log(
-    `  GitHub repository: ${github ? 'yes' : 'no'}; PageSpace drive: ${drive ? 'yes' : 'no'}`,
+    `  GitHub repository: ${github ? `yes, ${visibility}` : 'no'}; PageSpace drive: ${drive ? 'yes' : 'no'}`,
   );
-  return { display, slug, target, github, drive, run: flags.run ?? true };
+  return {
+    display,
+    slug,
+    target,
+    github,
+    visibility,
+    plan,
+    drive,
+    run: flags.run ?? true,
+  };
 }

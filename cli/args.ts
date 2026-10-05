@@ -6,6 +6,8 @@ import { defaultDisplay, displayProblem, slugProblem } from './rename';
 const FALLBACK_OWNER = '2witstudios';
 const REPO = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
 
+export type Visibility = 'public' | 'private';
+
 export type Options = {
   readonly target: string;
   readonly slug: string;
@@ -15,6 +17,8 @@ export type Options = {
   readonly without: readonly string[];
   readonly drive: boolean;
   readonly github: boolean;
+  /** The GitHub repository's visibility (default private). */
+  readonly visibility: Visibility;
   readonly install: boolean;
   readonly yes: boolean;
 };
@@ -30,6 +34,9 @@ Options:
   --repo <owner/name>  GitHub repository (default: <owner>/<slug>)
   --without <list>     comma-separated modules to drop (see cli/modules.json)
   --no-install         skip git init, bun install, auth:provision and the first commit
+  --public             create a public GitHub repository (free CI minutes and
+                       enforceable merge rules on a free GitHub plan)
+  --private            create a private GitHub repository (the default)
   --no-github          skip creating the GitHub repository
   --no-drive           skip the PageSpace drive bootstrap
   --yes, -y            do not ask for confirmation
@@ -43,6 +50,8 @@ const OPTIONS = {
   without: { type: 'string', default: '' },
   drive: { type: 'boolean', default: true },
   github: { type: 'boolean', default: true },
+  public: { type: 'boolean', default: false },
+  private: { type: 'boolean', default: false },
   install: { type: 'boolean', default: true },
   yes: { type: 'boolean', short: 'y', default: false },
   help: { type: 'boolean', short: 'h', default: false },
@@ -72,6 +81,8 @@ const identityProblem = (values: Values): string | null => {
     values.display ?? defaultDisplay(values.name ?? ''),
   );
   if (badDisplay) return `--display ${badDisplay}`;
+  if (values.public && values.private)
+    return '--public and --private cannot be used together';
   return values.repo !== undefined && !REPO.test(values.repo)
     ? `--repo must match ${REPO}`
     : null;
@@ -97,6 +108,7 @@ const toOptions = (
       .filter(Boolean),
     drive: values.drive,
     github: values.github,
+    visibility: values.public ? 'public' : 'private',
     install: values.install,
     yes: values.yes,
   };
