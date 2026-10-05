@@ -186,3 +186,16 @@ export const driveUrl = (config: ProjectConfig): string =>
 
 export const repoUrl = (config: ProjectConfig): string =>
   `https://github.com/${config.repo}`;
+
+/** True once `bun drive:bootstrap` has provisioned the project's drive. */
+export const driveProvisioned = (config: ProjectConfig): boolean =>
+  config.pagespace.driveId !== null;
+
+/**
+ * The notice a CI entrypoint prints when it skips drive work because no
+ * drive exists yet (the template itself, or a project generated with
+ * `--no-drive`). Once a drive is provisioned, a missing secret is a
+ * misconfiguration and fails instead.
+ */
+export const driveSkipNotice = (what: string): string =>
+  `::notice::${what} skipped: no PageSpace drive is provisioned (project.config.json pagespace.driveId is null; run \`bun drive:bootstrap\`)`;

@@ -25,6 +25,8 @@ import {
 import { postToDrive } from './notify-drive';
 import { pagespaceApi } from './pagespace-docs';
 import {
+  driveProvisioned,
+  driveSkipNotice,
   loadProjectConfig,
   requireDriveId,
   requirePage,
@@ -286,7 +288,9 @@ function liveDeps(
   };
 }
 
-if (import.meta.main) {
+if (import.meta.main && !driveProvisioned(loadProjectConfig())) {
+  console.log(driveSkipNotice('merge follow-up'));
+} else if (import.meta.main) {
   const env = process.env;
   const config = (await Bun.file(
     new URL('../policy/github/repository.json', import.meta.url),

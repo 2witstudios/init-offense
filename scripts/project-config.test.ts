@@ -1,5 +1,7 @@
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
 import {
+  driveProvisioned,
+  driveSkipNotice,
   driveUrl,
   loadProjectConfig,
   parseProjectConfig,
@@ -190,6 +192,32 @@ describe('the committed project.config.json', () => {
       given: 'the repository config',
       should: 'validate and carry only null or cuid2-shaped ids',
       actual: ids.every((id) => id === null || /^[a-z0-9]{24}$/.test(id)),
+      expected: true,
+    });
+  });
+});
+
+describe('driveProvisioned', () => {
+  test('tells a provisioned drive from the template default', () => {
+    assert({
+      given: 'a config with a drive id and one with none',
+      should: 'be true only for the provisioned drive',
+      actual: [
+        driveProvisioned(provisionedConfig()),
+        driveProvisioned(unprovisionedConfig()),
+      ],
+      expected: [true, false],
+    });
+  });
+
+  test('names the skipped work and the fix in a CI notice', () => {
+    assert({
+      given: 'a skipped merge follow-up',
+      should: 'emit a GitHub notice that points at drive:bootstrap',
+      actual:
+        driveSkipNotice('merge follow-up').startsWith(
+          '::notice::merge follow-up skipped',
+        ) && driveSkipNotice('x').includes('bun drive:bootstrap'),
       expected: true,
     });
   });

@@ -26,7 +26,10 @@ const registry = (...advisories: readonly unknown[]) => ({
   version: 1,
   advisories,
 });
-const live = new Map([['GHSA-82fw-gwwq-j7x9', ['@vitest/mocker', 'vitest']]]);
+const live = new Map([
+  ['GHSA-82fw-gwwq-j7x9', ['@vitest/mocker', 'vitest']],
+  ['GHSA-vfj7-8cjw-p6xm', ['braces']],
+]);
 const options = { today: '2026-09-23', knownPaths: new Set([adr]), live };
 
 describe('audit command', () => {
@@ -36,7 +39,12 @@ describe('audit command', () => {
       should:
         'run bun audit with one --ignore per listed advisory, no --audit-level',
       actual: auditCommand(committed),
-      expected: ['bun', 'audit', '--ignore=GHSA-82fw-gwwq-j7x9'],
+      expected: [
+        'bun',
+        'audit',
+        '--ignore=GHSA-82fw-gwwq-j7x9',
+        '--ignore=GHSA-vfj7-8cjw-p6xm',
+      ],
     });
   });
 
@@ -95,7 +103,7 @@ describe('audit exception registry', () => {
         knownPaths: new Set([adr]),
         live: new Map([
           ['GHSA-82fw-gwwq-j7x9', ['@vitest/mocker', 'vitest']],
-          ['GHSA-qpx9-hpmf-5gmw', ['underscore']],
+          ['GHSA-vfj7-8cjw-p6xm', ['braces']],
         ]),
       }),
       expected: [],

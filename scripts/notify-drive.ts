@@ -1,6 +1,11 @@
 #!/usr/bin/env bun
 import { createHmac } from 'node:crypto';
-import { loadProjectConfig, repoUrl } from './project-config';
+import {
+  driveProvisioned,
+  driveSkipNotice,
+  loadProjectConfig,
+  repoUrl,
+} from './project-config';
 import { assessEventText } from './untrusted-text';
 
 /**
@@ -322,6 +327,14 @@ function requireFlag(flags: Record<string, string>, name: string): string {
 
 async function main(): Promise<void> {
   const [channel, ...rest] = process.argv.slice(2);
+  // Nowhere to post: no drive yet and no webhook named for this channel.
+  const webhook = CHANNELS.includes(channel as Channel)
+    ? process.env[CHANNEL_ENV[channel as Channel].url]
+    : undefined;
+  if (!webhook && !driveProvisioned(loadProjectConfig())) {
+    console.log(driveSkipNotice(`notify-drive ${channel ?? ''}`.trimEnd()));
+    return;
+  }
   if (!CHANNELS.includes(channel as Channel)) {
     throw new Error(`Channel must be one of: ${CHANNELS.join(', ')}`);
   }

@@ -10,6 +10,16 @@
       "owner": "platform",
       "adr": "docs/decisions/0039-dated-dependency-audit-exceptions.md",
       "reviewBy": "2026-12-23"
+    },
+    {
+      "advisory": "GHSA-vfj7-8cjw-p6xm",
+      "packages": ["braces"],
+      "dependencyPath": "eslint-config-next (devDependency) > @next/eslint-plugin-next > fast-glob > micromatch > braces 3.0.3.",
+      "reason": "Stack-exhaustion DoS on deeply nested brace patterns (high). No patched braces release exists yet (3.0.3 is the latest published version).",
+      "unreachable": "Dev-only lint tooling: braces expands glob patterns written in this repository's own ESLint configuration, never untrusted input, and no production image installs dev dependencies.",
+      "owner": "platform",
+      "adr": "docs/decisions/0039-dated-dependency-audit-exceptions.md",
+      "reviewBy": "2026-11-30"
     }
   ]
 }

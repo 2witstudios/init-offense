@@ -11,7 +11,16 @@ import { dispatchDocumentationEvent } from './docs-consult';
 import { describeOutcomes } from './docs-consult-question';
 import { extractTaskIds } from './notify-drive';
 import { documentationDrive } from './pagespace-docs';
-import { loadProjectConfig } from './project-config';
+import {
+  driveProvisioned,
+  driveSkipNotice,
+  loadProjectConfig,
+} from './project-config';
+
+if (!driveProvisioned(loadProjectConfig())) {
+  console.log(driveSkipNotice('documentation dispatch'));
+  process.exit(0);
+}
 
 const required = (name: string): string => {
   const value = process.env[name];
