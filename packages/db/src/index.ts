@@ -7,6 +7,10 @@ import {
   type OutboxListenHandlers,
 } from './listen';
 import { claimUsername } from './username-claim';
+import {
+  loadAuthorizationContext,
+  type ResourceRef,
+} from './authorization/load-context';
 import { authOperations } from './auth-operations';
 import { emailDeliveryOperations } from './email-delivery-operations';
 import { outboxOperations } from './outbox';
@@ -19,6 +23,10 @@ import {
 } from './runtime-role';
 import { RUNTIME_SESSION } from './session-bounds';
 export type { UsernameClaim } from './username-claim';
+export type {
+  AuthorizationProjection,
+  ResourceRef,
+} from './authorization/load-context';
 export type { DatabaseEventSink } from './instrumented';
 export {
   encodeOutboxCursor,
@@ -124,6 +132,14 @@ export function createDatabase({
     /** Server-owned onboarding claim; see `claimUsername`. */
     claimUsername: (input: { userId: string; username: string }) =>
       claimUsername(database, input, eventSink),
+    /**
+     * The facts one authorization decision reads (ADR 0048 section 5);
+     * `@acme/auth`'s `toAuthorizationInput` maps the projection.
+     */
+    loadAuthorizationContext: (input: {
+      userId: string | null;
+      resourceRef: ResourceRef;
+    }) => loadAuthorizationContext(database, input, eventSink),
   };
 }
 export type Database = ReturnType<typeof createDatabase>;
