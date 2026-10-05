@@ -87,13 +87,38 @@ loader-supported assignments (`export BETTER_AUTH_SECRET=…`,
 `BETTER_AUTH_SECRET = …`) rotate: the generated value is appended as the
 final assignment (dotenv last-assignment semantics), the stale line is left
 untouched, and repeated runs are no-ops. Neither value is ever printed or
-committed. Live email delivery additionally needs owner-provisioned Resend
-credentials. The optional
+committed. Resend is optional locally: without `RESEND_API_KEY` and
+`AUTH_EMAIL_FROM`, `bun dev` prints auth mail to the terminal (see
+[Signing in locally](#signing-in-locally)). Live email delivery needs
+owner-provisioned Resend credentials. The optional
 `AUTH_TRUSTED_PROXIES` list declares which of your own reverse proxy's IPs
 or CIDR ranges to skip when walking a forwarded chain; leave it unset
 locally (`next dev` runs without the stamping ingress, so no request carries
 an identity anyway, and every request shares one rate-limit bucket per
 path). See [production operations](../operations/production.md#releases).
+
+## Signing in locally
+
+You do not need a Resend account to sign in on your own machine.
+
+1. `bun auth:provision` (generates `BETTER_AUTH_SECRET` and
+   `RECIPIENT_HASH_SECRET` into `.env`), then `bun slot:up`.
+2. Leave `RESEND_API_KEY` and `AUTH_EMAIL_FROM` unset, keep
+   `PUBLIC_APP_URL` on `localhost`, and run `bun dev`.
+3. Request a sign-in link on the sign-in page. The email is not sent.
+   Instead, the terminal running `bun dev` prints it as a block of
+   `[dev-mail]` lines, with the link on the `Link:` line.
+4. Open that link to finish signing in. You can register a passkey from
+   there.
+
+The terminal mailer is selected only when `NODE_ENV=development`, the
+hostname of `PUBLIC_APP_URL` is `localhost`, `127.0.0.1` or `[::1]`, and both
+Resend variables are unset. Test and production builds, and a development
+server on any other origin, refuse to start auth without Resend. The printed
+link is a live credential: it is written to stderr only, never to the
+structured logs ([ADR 0050](../decisions/0050-local-development-terminal-mailer.md)).
+To send real mail, set `RESEND_API_KEY` and `AUTH_EMAIL_FROM` (a verified
+Resend sender). With both set, Resend is always used.
 
 ## Parallel sessions on one machine
 

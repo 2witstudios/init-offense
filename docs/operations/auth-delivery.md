@@ -18,7 +18,18 @@ deploy and to reason about failures.
 | `OPS_PROBE_TOKEN`       | Bearer credential for `/api/ops/alerts` and `/api/ops/metrics`; the scheduled `auth-alerts.yml` workflow's only credential |
 
 `apps/web/src/server/start.ts` validates these at boot and reports field names
-only. Live delivery additionally needs a human prerequisite: a
+only. `RESEND_API_KEY` and `AUTH_EMAIL_FROM` are required everywhere except
+local development. With `NODE_ENV=development`, a loopback `PUBLIC_APP_URL`
+(`localhost`, `127.0.0.1` or `[::1]`) and neither variable set, auth mail goes
+to the terminal mailer, which prints each message and its link to the
+server's stderr as `[dev-mail]` lines instead of sending it
+([ADR 0050](../decisions/0050-local-development-terminal-mailer.md)). That is
+the one sanctioned place a credential is written out, and it never goes
+through the structured logger. Suppression, rate limits and the
+`email_delivery` receipt (`dev-mail-…`) behave as for a Resend send; no
+delivery webhook follows. `test` and `production` builds (staging included),
+and a development server on any other origin, refuse to start auth without
+both variables. Live delivery additionally needs a human prerequisite: a
 verified Resend domain (SPF, DKIM, initial DMARC monitoring policy) with
 **open and click tracking disabled** — tracking is a domain-level Resend
 setting the message API cannot override — and a webhook pointing at

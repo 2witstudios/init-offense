@@ -54,6 +54,7 @@ from; those whose content changed materially say so under their status.
 | [0044](0044-recipient-hash-secret-independent-of-session-secret.md) | The recipient-hash key is independent of the session-signing secret                                     |
 | [0046](0046-auth-alert-probe-cadence-correction.md)                 | The auth alert probe's Actions schedule is best-effort; no new scheduler                                |
 | [0048](0048-authorization-core.md)                                  | One pure authorization evaluator over a closed capability vocabulary                                    |
+| [0050](0050-local-development-terminal-mailer.md)                   | Local development prints auth mail to the terminal when Resend is unset                                 |
 
 ## Intentionally absent numbers
 

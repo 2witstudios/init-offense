@@ -93,8 +93,10 @@ do them for you:
    `REVIEW_RECORD_APP_KEY` repository secret. Then require `review-record` in the `main` ruleset;
    see [review record](docs/development/review-record.md).
 3. **Resend.** Verify a sending domain and set `RESEND_API_KEY` and
-   `AUTH_EMAIL_FROM` (locally in `.env`, in deployments as Fly secrets);
-   see [auth delivery](docs/operations/auth-delivery.md).
+   `AUTH_EMAIL_FROM` as deploy secrets (and in `.env` to send real mail
+   locally); see [auth delivery](docs/operations/auth-delivery.md). Local
+   development works without it: `bun dev` prints sign-in links to the
+   terminal ([signing in locally](docs/development/local-development.md#signing-in-locally)).
 4. **Fly.** Create the staging and production apps, PostgreSQL and Redis,
    and set their secrets, plus the `FLY_API_TOKEN` and
    `FLY_MIGRATE_API_TOKEN` repository secrets the deploy workflows use; see

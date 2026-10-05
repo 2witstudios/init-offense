@@ -23,6 +23,7 @@ describe('authentication configuration', () => {
         BETTER_AUTH_SECRET: authEnv.BETTER_AUTH_SECRET,
         RECIPIENT_HASH_SECRET: authEnv.RECIPIENT_HASH_SECRET,
         PUBLIC_APP_URL: authEnv.PUBLIC_APP_URL,
+        mailTransport: 'resend',
         RESEND_API_KEY: authEnv.RESEND_API_KEY,
         AUTH_EMAIL_FROM: authEnv.AUTH_EMAIL_FROM,
         AUTH_TRUSTED_PROXIES: [],
@@ -174,6 +175,7 @@ describe('authentication configuration', () => {
         'PUBLIC_APP_URL',
         'RECIPIENT_HASH_SECRET',
         'RESEND_API_KEY',
+        'mailTransport',
       ],
     });
   });

@@ -131,4 +131,56 @@ describe('createApp', () => {
       expected: { code: 'INFRASTRUCTURE' },
     });
   });
+  test('selects the terminal mailer only for local development without Resend', async () => {
+    const withoutResend = (env: Record<string, string>) => {
+      const copy: Record<string, string> = { ...env };
+      Reflect.deleteProperty(copy, 'RESEND_API_KEY');
+      Reflect.deleteProperty(copy, 'AUTH_EMAIL_FROM');
+      return copy;
+    };
+    const development = build(
+      withoutResend({ ...baseEnv, ...authTestEnv, NODE_ENV: 'development' }),
+    );
+    const transport = development.auth().config.mailTransport;
+    const webhook = await rejectionOf(() => development.mailWebhook());
+    await development.close();
+    const testBuild = build(withoutResend({ ...baseEnv, ...authTestEnv }));
+    const testRefusal = errorOf(() => testBuild.auth());
+    await testBuild.close();
+    const production = build(
+      withoutResend({
+        ...baseEnv,
+        ...authTestEnv,
+        NODE_ENV: 'production',
+        PUBLIC_APP_URL: 'https://acme.example.com',
+        DATABASE_URL: 'postgres://unit:unit@db.internal:5432/unit',
+        APP_VERSION: '1.0.0',
+        GIT_COMMIT: 'abc1234',
+        RESEND_WEBHOOK_SECRET: `whsec_${Buffer.from('placeholder-webhook-key').toString('base64')}`,
+        OPS_PROBE_TOKEN: 'p'.repeat(32),
+      }),
+    );
+    const productionRefusal = errorOf(() => production.auth());
+    await production.close();
+    assert({
+      given:
+        'the same auth environment without Resend at development, test and production',
+      should:
+        'compose the terminal mailer in development only; test and production refuse naming the Resend fields',
+      actual: {
+        transport,
+        webhook,
+        testRefuses: testRefusal.includes('RESEND_API_KEY'),
+        productionRefuses: productionRefusal.includes(
+          'Invalid auth configuration: RESEND_API_KEY, AUTH_EMAIL_FROM',
+        ),
+      },
+      expected: {
+        transport: 'terminal',
+        webhook: { code: 'INFRASTRUCTURE' },
+        testRefuses: true,
+        productionRefuses: true,
+      },
+    });
+  });
 });
