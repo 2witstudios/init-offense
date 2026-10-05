@@ -137,7 +137,9 @@ do them for you:
    and set their secrets, plus the `FLY_API_TOKEN` and
    `FLY_MIGRATE_API_TOKEN` repository secrets the deploy workflows use; see
    [deploy to staging](docs/operations/deploy-staging.md)
-   and [production](docs/operations/production.md).
+   and [production](docs/operations/production.md). Then turn the deploy and
+   alert-probe workflows on with `gh variable set STAGING_ENABLED --body true`;
+   until then they skip without using Actions minutes.
 5. **PageSpace credentials.** Provide a drive-scoped `PAGESPACE_TOKEN`
    (locally and as a repository secret) for the docs pipeline and board
    scripts, and the channel webhook secrets the workflows post through

@@ -299,6 +299,16 @@ true` starts it again on the next request if it is ever found stopped.
   underlying machine and its 6PN address can change, and RP ID depends on
   neither. Passkeys registered against this staging app stay valid.
 
+## Turning staging on
+
+The deploy workflow and the scheduled auth alert probe stay off (they skip
+without taking a runner) until the repository variable `STAGING_ENABLED` is
+`true`. Set it once the steps below have created and configured the apps:
+
+```
+gh variable set STAGING_ENABLED --body true
+```
+
 ## 1. Create the app
 
 ```

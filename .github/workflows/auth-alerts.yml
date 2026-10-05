@@ -27,6 +27,9 @@ concurrency:
 jobs:
   probe:
     name: Probe the staging origin and alert conditions
+    # No origin to probe until staging is deployed; until then the schedule
+    # skips without taking a runner (set STAGING_ENABLED=true with staging).
+    if: vars.STAGING_ENABLED == 'true'
     runs-on: ubuntu-24.04
     # The probe's request budgets (PROBE_FETCH_TIMEOUT_MS and
     # NOTIFY_ATTEMPT_TIMEOUT_MS) fit a fully hung run in about 100 s, so it

@@ -27,7 +27,11 @@ jobs:
     # Both workflows also run on pull_request, so a PR whose source branch
     # is named "main" would satisfy the branches filter: require the run to
     # come from a push to this repository's main, never from a PR head.
+    # Nothing to deploy to until staging exists: set the repository variable
+    # STAGING_ENABLED=true once the Fly apps are created
+    # (docs/operations/deploy-staging.md).
     if: >-
+      vars.STAGING_ENABLED == 'true' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
@@ -64,6 +68,7 @@ jobs:
     needs: ready
     if: >-
       !cancelled() &&
+      vars.STAGING_ENABLED == 'true' &&
       (github.event_name == 'workflow_dispatch' ||
        needs.ready.outputs.deploy == 'true')
     env:
