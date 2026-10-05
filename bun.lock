@@ -86,7 +86,7 @@
       "name": "@acme/auth",
       "version": "0.0.0",
       "dependencies": {
-        "@acme/errors": "workspace:*",
+        "@acme/protocol": "workspace:*",
       },
       "devDependencies": {
         "riteway": "9.3.0",
