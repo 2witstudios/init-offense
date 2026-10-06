@@ -10,6 +10,8 @@ const skipDirectories = new Set([
   '.next',
   '.turbo',
   '.pu',
+  // Claude Code's agent worktrees: full checkouts of this repo, not part of it.
+  '.claude',
   'dist',
   'test-results',
   'playwright-report',

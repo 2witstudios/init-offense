@@ -21,6 +21,8 @@ const skipped = new Set([
   '.git',
   '.next',
   '.pu',
+  // Claude Code's agent worktrees are full checkouts of this repo, not part of it.
+  '.claude',
   '.turbo',
   'dist',
   'node_modules',
