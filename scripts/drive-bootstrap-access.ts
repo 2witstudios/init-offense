@@ -4,6 +4,11 @@
  * edit. A key minted with the built-in MEMBER role reads fine and fails
  * every board write, so this asks PageSpace's own resolver rather than
  * trusting the role name. GETs only, so `--check` runs it read-only.
+ *
+ * `--check` may run with only the drive's own key. Listing roles is then
+ * best effort: when PageSpace refuses it, the role's grants are reported as
+ * not checked and the key is matched to the role by the name PageSpace
+ * resolves for it instead of by id.
  */
 import {
   HttpError,
@@ -31,15 +36,31 @@ type RoleRecord = {
   } | null;
 };
 
+/** The roles listing was refused to this key (it is not an owner key). */
+const UNREADABLE = 'unreadable';
+type RoleLookup = RoleState | null | typeof UNREADABLE;
+
 /** The drive's "Agent" role (found by name: names are unique per drive). */
 async function agentRole(
   transport: Transport,
   driveId: string,
-): Promise<RoleState | null> {
-  const { roles } = await transport.api<{ roles: readonly RoleRecord[] }>(
-    'GET',
-    `/api/drives/${driveId}/roles`,
-  );
+  optional: boolean,
+): Promise<RoleLookup> {
+  let roles: readonly RoleRecord[];
+  try {
+    ({ roles } = await transport.api<{ roles: readonly RoleRecord[] }>(
+      'GET',
+      `/api/drives/${driveId}/roles`,
+    ));
+  } catch (error) {
+    if (
+      optional &&
+      error instanceof HttpError &&
+      [401, 403].includes(error.status)
+    )
+      return UNREADABLE;
+    throw error;
+  }
   const role = roles.find((candidate) => candidate.name === AGENT_ROLE.name);
   if (!role) return null;
   const grant = role.driveWidePermissions;
@@ -51,8 +72,9 @@ async function agentRole(
   };
 }
 
-function roleProblems(role: RoleState | null): Problem[] {
+function roleProblems(role: RoleLookup): Problem[] {
   const ref = 'agentRole';
+  if (role === UNREADABLE) return [];
   if (role === null)
     return [{ ref, message: `drive role "${AGENT_ROLE.name}" is missing` }];
   return grantsAgentAccess(role)
@@ -69,6 +91,7 @@ type KeyDescription = {
   readonly driveScopes: readonly {
     readonly id: string;
     readonly customRoleId: string | null;
+    readonly customRoleName?: string | null;
   }[];
   readonly page: {
     readonly permissions: { readonly canEdit: boolean } | null;
@@ -87,7 +110,7 @@ async function agentKeyProblems(
   agentKey: Transport,
   driveId: string,
   roadmapId: string,
-  role: RoleState | null,
+  role: RoleLookup,
 ): Promise<Problem[]> {
   const fail = (message: string): Problem[] => [
     { ref: 'PAGESPACE_TOKEN', message: `${message}: ${KEY_FIX}` },
@@ -106,15 +129,20 @@ async function agentKeyProblems(
   const scope = described.driveScopes.find((drive) => drive.id === driveId);
   if (!described.page?.permissions?.canEdit)
     return fail('cannot edit the Roadmap');
-  if (role === null || scope?.customRoleId !== role.id)
-    return fail(`does not hold the "${AGENT_ROLE.name}" role`);
+  const holdsRole =
+    role === UNREADABLE
+      ? scope?.customRoleName === AGENT_ROLE.name
+      : role !== null && scope?.customRoleId === role.id;
+  if (!holdsRole) return fail(`does not hold the "${AGENT_ROLE.name}" role`);
   return [];
 }
+
+const ROLE_UNCHECKED = `agentRole: the "${AGENT_ROLE.name}" role's drive-wide grants were not checked (listing roles needs an owner key: set PAGESPACE_BOOTSTRAP_TOKEN)`;
 
 /** The Agent role, and whether `.env`'s key holds it and can edit (null: unverified). */
 async function agentAccess(
   transport: Transport,
-  agentKey: Transport | null,
+  options: AccessOptions,
   driveId: string,
   roadmapId: string | undefined,
   env: ReadonlySet<string>,
@@ -122,8 +150,14 @@ async function agentAccess(
   role: RoleState | null;
   keyValid: boolean | null;
   problems: Problem[];
+  unchecked: string[];
 }> {
-  const role = await agentRole(transport, driveId);
+  const { agentKey } = options;
+  const role = await agentRole(
+    transport,
+    driveId,
+    options.roleReadOptional ?? false,
+  );
   const keyProblems =
     agentKey && roadmapId
       ? await agentKeyProblems(agentKey, driveId, roadmapId, role)
@@ -137,28 +171,36 @@ async function agentAccess(
         },
       ];
   return {
-    role,
+    role: role === UNREADABLE ? null : role,
     keyValid: keyProblems === null ? null : keyProblems.length === 0,
     problems: [...roleProblems(role), ...missing, ...(keyProblems ?? [])],
+    unchecked: role === UNREADABLE ? [ROLE_UNCHECKED] : [],
   };
 }
 
-/**
- * `inspectDrive`, then the Agent role and key on the drive it found.
- * `agentKey` is a transport authenticated with `.env`'s PAGESPACE_TOKEN.
- */
+type AccessOptions = {
+  /** A transport authenticated with `.env`'s PAGESPACE_TOKEN. */
+  readonly agentKey: Transport | null;
+  /**
+   * The inspecting transport may not be an owner key (`--check` with only
+   * the drive key): a refused roles listing is reported, not fatal.
+   */
+  readonly roleReadOptional?: boolean;
+};
+
+/** `inspectDrive`, then the Agent role and key on the drive it found. */
 export async function inspectBootstrap(
   config: ProjectConfig,
   manifest: Manifest,
   transport: Transport,
-  options: InspectOptions & { readonly agentKey: Transport | null },
+  options: InspectOptions & AccessOptions,
 ): Promise<Inspection> {
   const inspected = await inspectDrive(config, manifest, transport, options);
   const { state } = inspected;
   if (state.drive === null) return inspected;
   const access = await agentAccess(
     transport,
-    options.agentKey,
+    options,
     state.drive.id,
     state.nodes.roadmap?.id,
     state.env,
@@ -166,5 +208,6 @@ export async function inspectBootstrap(
   return {
     state: { ...state, agentRole: access.role, agentKeyValid: access.keyValid },
     problems: [...inspected.problems, ...access.problems],
+    unchecked: access.unchecked,
   };
 }

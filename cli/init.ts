@@ -72,10 +72,12 @@ const step = (
   label: string,
   command: string,
   args: readonly string[],
+  /** A probe whose non-zero exit is an expected answer, not a failure. */
+  { quiet = false }: { readonly quiet?: boolean } = {},
 ): boolean => {
   deps.log(`\n$ ${[command, ...args].join(' ')}   # ${label}`);
   const status = deps.run(command, args, options.target);
-  if (status !== 0) deps.log(`  failed (exit ${status}): ${label}`);
+  if (status !== 0 && !quiet) deps.log(`  failed (exit ${status}): ${label}`);
   return status === 0;
 };
 
@@ -100,18 +102,20 @@ const MAX_FORMAT_PASSES = 3;
  * Prettier is not always idempotent after a rename (a member chain that
  * fits on one line only once its argument was reflowed needs a second
  * pass), so the tree is rewritten until `--check` agrees, at most
- * MAX_FORMAT_PASSES times.
+ * MAX_FORMAT_PASSES times. A check before the last pass is expected to
+ * fail when a second pass is needed, so it is silent; only the last one
+ * lets prettier name the unsettled files and reports the failure.
  */
 function formatUntilSettled(context: Context): boolean {
+  // Quiet: list only files prettier could not settle, not every file.
+  const prettier = (mode: string, logLevel = 'warn') => [
+    '--bun',
+    'prettier',
+    `--log-level=${logLevel}`,
+    mode,
+    '.',
+  ];
   for (let pass = 1; pass <= MAX_FORMAT_PASSES; pass += 1) {
-    // Quiet: list only files prettier could not settle, not every file.
-    const prettier = (mode: string) => [
-      '--bun',
-      'prettier',
-      '--log-level=warn',
-      mode,
-      '.',
-    ];
     if (
       !step(
         context,
@@ -121,7 +125,16 @@ function formatUntilSettled(context: Context): boolean {
       )
     )
       return false;
-    if (step(context, 'check formatting settled', 'bunx', prettier('--check')))
+    const last = pass === MAX_FORMAT_PASSES;
+    if (
+      step(
+        context,
+        'check formatting settled',
+        'bunx',
+        prettier('--check', last ? 'warn' : 'silent'),
+        { quiet: !last },
+      )
+    )
       return true;
   }
   context.deps.log(

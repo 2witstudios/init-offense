@@ -4,7 +4,7 @@ import type { Captured, Prompt, WizardDeps } from './wizard-deps';
 export type FakeOptions = {
   /** Probe results by joined command; unlisted probes succeed. */
   readonly probes?: Readonly<Record<string, Captured>>;
-  readonly capture?: (command: string) => Captured;
+  readonly consent?: (command: string) => Captured;
   readonly run?: (command: string) => number;
   readonly files?: Record<string, string>;
   readonly isPortFree?: (port: number) => boolean;
@@ -15,7 +15,7 @@ export type FakeOptions = {
 export type Fake = {
   readonly deps: WizardDeps;
   readonly logs: string[];
-  /** Commands run attached (run, capture, start), joined with spaces. */
+  /** Commands run attached (run, consent, start), joined with spaces. */
   readonly ran: string[];
   readonly opened: string[];
   readonly files: Record<string, string>;
@@ -49,9 +49,9 @@ export function fakeDeps(options: FakeOptions = {}): Fake {
         const line = record(command, run?.env);
         return options.run?.(line) ?? 0;
       },
-      capture: (command) => {
+      consent: async (command) => {
         const line = record(command);
-        return options.capture?.(line) ?? { code: 0, stdout: '' };
+        return options.consent?.(line) ?? { code: 0, stdout: '' };
       },
       start: async (command) => {
         record(command);

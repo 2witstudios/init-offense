@@ -19,20 +19,21 @@
  * script creates with drive-wide view and edit and no share: the built-in
  * MEMBER role is view-only on pages it did not create. `--check` asks
  * PageSpace whether that key can edit the Roadmap; a key that cannot is
- * re-minted on the next run.
+ * re-minted on the next run. `--check` needs no unscoped key: without
+ * PAGESPACE_BOOTSTRAP_TOKEN it reads the drive with that same `.env` key.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseDotenv } from './dotenv';
 import {
   HttpError,
-  checkReport,
   readOnly,
   validateSeed,
   type Paths,
   type Transport,
 } from './drive-bootstrap-inspect';
 import { inspectBootstrap } from './drive-bootstrap-access';
+import { checkDrive } from './drive-bootstrap-check';
 import { executePlan } from './drive-bootstrap-exec';
 import {
   configuredId,
@@ -46,7 +47,19 @@ import {
   type BootstrapOptions,
   type ExistingState,
 } from './drive-bootstrap-plan';
+import { consentFilter } from './pagespace-consent';
 import { loadProjectConfig, type ProjectConfig } from './project-config';
+
+/** Decodes a byte stream into `push` as it arrives. */
+async function forward(
+  stream: ReadableStream<Uint8Array>,
+  push: (chunk: string) => void,
+): Promise<void> {
+  const decoder = new TextDecoder();
+  for await (const bytes of stream)
+    push(decoder.decode(bytes, { stream: true }));
+  push(decoder.decode());
+}
 
 type Flags = BootstrapOptions & {
   readonly dryRun: boolean;
@@ -153,10 +166,18 @@ function liveTransport(
             ? 'inherit'
             : new TextEncoder().encode(options.stdin),
         stdout: 'pipe',
-        stderr: 'inherit',
+        stderr: options?.consent ? 'pipe' : 'inherit',
       });
-      const stdout = await new Response(child.stdout).text();
-      return { code: await child.exited, stdout };
+      const filter = consentFilter((line) => console.error(line));
+      const [stdout] = await Promise.all([
+        new Response(child.stdout).text(),
+        child.stderr instanceof ReadableStream
+          ? forward(child.stderr, filter.push)
+          : null,
+      ]);
+      const code = await child.exited;
+      filter.end(code);
+      return { code, stdout };
     },
     readText: (path) => (existsSync(path) ? readFileSync(path, 'utf8') : null),
     writeText: (path, text) => writeFileSync(path, text),
@@ -227,6 +248,15 @@ async function main(
     console.error(problems.join('\n'));
     return 1;
   }
+  if (flags.check) {
+    const envText = transport.readText(paths.env) ?? '';
+    const { code, report } = await checkDrive(config, manifest, envText, {
+      bootstrap: live ? transport : null,
+      agentKey: agentKeyTransport(config, envText),
+    });
+    (code === 2 ? console.error : console.log)(report);
+    return code;
+  }
   if (!live && !flags.dryRun) {
     console.error(
       `This command reads the live drive: ${TOKEN_HELP}, or pass --dry-run.`,
@@ -242,10 +272,6 @@ async function main(
           agentKey: agentKeyTransport(config, envText),
         })
       : { state: offlineState(config, manifest, envText), problems: [] };
-  if (flags.check) {
-    console.log(checkReport(inspected.problems));
-    return inspected.problems.length === 0 ? 0 : 1;
-  }
   const actions = planBootstrap(config, manifest, inspected.state, flags);
   if (flags.dryRun) {
     console.log(
@@ -262,7 +288,7 @@ async function main(
     state: inspected.state,
   });
   console.log(
-    'drive:bootstrap done. Verify with `bun drive:bootstrap --check`.',
+    "drive:bootstrap done. Verify any time with `bun drive:bootstrap --check` (it reads the drive with .env's PAGESPACE_TOKEN).",
   );
   return 0;
 }

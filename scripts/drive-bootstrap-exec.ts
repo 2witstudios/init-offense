@@ -185,8 +185,10 @@ async function mintKey(
     '--host',
     config.pagespace.apiUrl,
   ];
-  run.ctx.transport.log('  approve the key in your browser…');
-  const result = await run.ctx.transport.run(command);
+  run.ctx.transport.log(
+    `  approve the drive's own key "${config.name}-agent" in your browser…`,
+  );
+  const result = await run.ctx.transport.run(command, { consent: true });
   const token = /^PAGESPACE_TOKEN=(mcp_\S+)$/m.exec(result.stdout)?.[1];
   if (result.code !== 0 || !token)
     throw new Error(

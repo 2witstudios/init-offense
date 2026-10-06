@@ -51,7 +51,7 @@ describe('main', () => {
           'bun install',
           'bun auth:provision',
           'bunx --bun prettier --log-level=warn --write .',
-          'bunx --bun prettier --log-level=warn --check .',
+          'bunx --bun prettier --log-level=silent --check .',
           'bunx --bun jscpd --reporters=silent --update-baseline',
           'bunx --bun jscpd --config .jscpd-tests.json --reporters=silent --update-baseline',
           'bunx --bun prettier --log-level=warn --write .jscpd-baseline.json .jscpd-tests-baseline.json',
@@ -168,19 +168,28 @@ describe('main', () => {
       const prettier = commands.filter((line) => line.includes('prettier'));
       return { code, prettier, logs };
     };
-    const pass = [
-      'bunx --bun prettier --log-level=warn --write .',
-      'bunx --bun prettier --log-level=warn --check .',
-    ];
+    const write = 'bunx --bun prettier --log-level=warn --write .';
+    // An intermediate check is expected to fail, so it is silent; only the
+    // last pass lets prettier name the files it could not settle.
+    const quietCheck = 'bunx --bun prettier --log-level=silent --check .';
+    const finalCheck = 'bunx --bun prettier --log-level=warn --check .';
     const baselines =
       'bunx --bun prettier --log-level=warn --write .jscpd-baseline.json .jscpd-tests-baseline.json';
+    const failureLines = (logs: readonly string[]) =>
+      logs.filter((line) => line.includes('failed (exit'));
 
     test('rewrites again while the check still finds changes', () => {
+      const { code, prettier, logs } = formatRun(1);
       assert({
         given: 'a tree that settles on the second prettier pass',
-        should: 'write twice, check twice and continue',
-        actual: (({ code, prettier }) => ({ code, prettier }))(formatRun(1)),
-        expected: { code: 0, prettier: [...pass, ...pass, baselines] },
+        should:
+          'write twice, check twice quietly, print no failure and continue',
+        actual: { code, prettier, failures: failureLines(logs) },
+        expected: {
+          code: 0,
+          prettier: [write, quietCheck, write, quietCheck, baselines],
+          failures: [],
+        },
       });
     });
 
@@ -188,17 +197,20 @@ describe('main', () => {
       const { code, prettier, logs } = formatRun(3);
       assert({
         given: 'a tree prettier never settles',
-        should: 'stop after three passes, name the problem and exit 1',
+        should:
+          'stop after three passes, report only the final failure and exit 1',
         actual: {
           code,
           prettier,
+          failures: failureLines(logs),
           named: logs.some((line) =>
             line.includes('formatting did not settle after 3 prettier passes'),
           ),
         },
         expected: {
           code: 1,
-          prettier: [...pass, ...pass, ...pass],
+          prettier: [write, quietCheck, write, quietCheck, write, finalCheck],
+          failures: ['  failed (exit 1): check formatting settled'],
           named: true,
         },
       });

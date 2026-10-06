@@ -1,67 +1,16 @@
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
-import { inspectBootstrap } from './drive-bootstrap-access';
-import { executePlan } from './drive-bootstrap-exec';
 import { checkReport, readOnly, validateSeed } from './drive-bootstrap-inspect';
-import { parseManifest } from './drive-bootstrap-manifest';
-import { planBootstrap, type BootstrapOptions } from './drive-bootstrap-plan';
 import { parseProjectConfig } from './project-config';
+import { paths, templateConfigText } from './drive-bootstrap-fake.test-support';
 import {
-  fakeDrive,
-  manifestJson,
-  paths,
-  templateConfigText,
-} from './drive-bootstrap-fake.test-support';
+  bootstrap,
+  configOf,
+  inspect,
+  manifest,
+  seeded,
+} from './drive-bootstrap-run.test-support';
 
 setupRitewayBun();
-
-const manifest = parseManifest(manifestJson());
-const options: BootstrapOptions = {
-  skipWebhooks: false,
-  skipKey: false,
-  github: true,
-  docsWorkflows: true,
-};
-const AGENTS =
-  '# Agents\n\n<!-- drive:start -->\nplaceholder\n<!-- drive:end -->\n';
-
-type Fake = ReturnType<typeof fakeDrive>;
-
-const configOf = (fake: Fake) =>
-  parseProjectConfig(JSON.parse(fake.files.get(paths.config) ?? ''));
-
-/** Inspects the fake drive as `main` does, the agent key read from .env. */
-const inspect = (fake: Fake, withWorkflows = true) => {
-  const envText = fake.files.get(paths.env) ?? '';
-  return inspectBootstrap(configOf(fake), manifest, readOnly(fake.transport), {
-    envText,
-    withWorkflows,
-    agentKey: envText.includes('PAGESPACE_TOKEN=')
-      ? readOnly(fake.transport)
-      : null,
-  });
-};
-
-/** One full bootstrap pass against the fake drive, as `main` runs it. */
-async function bootstrap(fake: Fake) {
-  const config = configOf(fake);
-  const { state, problems } = await inspect(fake);
-  const actions = planBootstrap(config, manifest, state, options);
-  await executePlan(actions, {
-    manifest,
-    transport: fake.transport,
-    paths,
-    state,
-  });
-  return { actions, problems };
-}
-
-function seeded(failOnCall?: number) {
-  const fake = fakeDrive({ failOnCall });
-  fake.files.set(paths.config, templateConfigText());
-  fake.files.set(paths.env, 'DATABASE_URL=postgres://local\n');
-  fake.files.set(paths.agents, AGENTS);
-  return fake;
-}
 
 const errorOf = async (fn: () => Promise<unknown>): Promise<string> => {
   try {
@@ -230,6 +179,13 @@ describe('the Agent role and key', () => {
       should: 'carry the Agent role id and the <name>-agent key name',
       actual: [mint?.[roleAt + 1], mint?.[nameAt + 1]],
       expected: [fake.roles[0]?.id, `${config.name}-agent`],
+    });
+    assert({
+      given: 'the mint command',
+      should:
+        'run as a consent flow, so only its approval lines reach the user',
+      actual: fake.commands.find((c) => c.command[1] === 'keys')?.consent,
+      expected: true,
     });
   });
 

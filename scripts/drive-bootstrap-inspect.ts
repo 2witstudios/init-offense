@@ -31,7 +31,14 @@ export type Transport = {
   readonly api: <T>(method: string, path: string, body?: unknown) => Promise<T>;
   readonly run: (
     command: readonly string[],
-    options?: { readonly stdin?: string },
+    options?: {
+      readonly stdin?: string;
+      /**
+       * A `pagespace keys create` consent flow: its stderr is filtered to
+       * the lines the user needs to approve (`pagespace-consent.ts`).
+       */
+      readonly consent?: boolean;
+    },
   ) => Promise<{ readonly code: number; readonly stdout: string }>;
   readonly readText: (path: string) => string | null;
   readonly writeText: (path: string, text: string) => void;
@@ -136,6 +143,8 @@ function verify(
 export type Inspection = {
   readonly state: ExistingState;
   readonly problems: readonly Problem[];
+  /** What this credential could not verify; reported, never a failure. */
+  readonly unchecked?: readonly string[];
 };
 
 /** Finds a node by title and type under its parent, cached per parent. */
@@ -326,11 +335,24 @@ export function templateVars(
 }
 
 /** Configured ids that are null, missing, mistyped or trashed; role and key drift. */
-export function checkReport(problems: readonly Problem[]): string {
-  return problems.length === 0
-    ? 'drive check: every configured id exists in the drive with the expected type, and PAGESPACE_TOKEN holds the Agent role and can edit.'
-    : [
-        'drive check FAILED:',
-        ...problems.map((problem) => `  - ${problem.ref}: ${problem.message}`),
-      ].join('\n');
+export function checkReport(
+  problems: readonly Problem[],
+  unchecked: readonly string[] = [],
+): string {
+  const verdict =
+    problems.length === 0
+      ? [
+          'drive check: every configured id exists in the drive with the expected type, and PAGESPACE_TOKEN holds the Agent role and can edit.',
+        ]
+      : [
+          'drive check FAILED:',
+          ...problems.map(
+            (problem) => `  - ${problem.ref}: ${problem.message}`,
+          ),
+        ];
+  const skipped =
+    unchecked.length === 0
+      ? []
+      : ['not checked:', ...unchecked.map((line) => `  - ${line}`)];
+  return [...verdict, ...skipped].join('\n');
 }

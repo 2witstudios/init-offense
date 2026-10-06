@@ -8,6 +8,7 @@ import { homedir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { openInBrowser } from '../scripts/browser';
+import { consentFilter } from '../scripts/pagespace-consent';
 import {
   WizardStop,
   type Captured,
@@ -58,16 +59,27 @@ const runner: Runner = {
       }).status ?? 1
     );
   },
-  capture: (command, options): Captured => {
-    const [file = '', ...args] = command;
-    const result = spawnSync(file, args, {
-      cwd: options?.cwd,
-      env: childEnv(options),
-      encoding: 'utf8',
-      stdio: ['inherit', 'pipe', 'inherit'],
-    });
-    return { code: result.status ?? 1, stdout: output(result.stdout) };
-  },
+  consent: (command, options) =>
+    new Promise<Captured>((resolve) => {
+      const [file = '', ...args] = command;
+      const child = spawn(file, args, {
+        cwd: options?.cwd,
+        env: childEnv(options),
+        stdio: ['inherit', 'pipe', 'pipe'],
+      });
+      const filter = consentFilter((line) => process.stderr.write(`${line}\n`));
+      let stdout = '';
+      child.stdout.setEncoding('utf8');
+      child.stdout.on('data', (chunk: string) => (stdout += chunk));
+      child.stderr.setEncoding('utf8');
+      child.stderr.on('data', filter.push);
+      const finish = (code: number) => {
+        filter.end(code);
+        resolve({ code, stdout });
+      };
+      child.on('error', () => finish(127));
+      child.on('close', (code) => finish(code ?? 1));
+    }),
   start: (command, options) =>
     new Promise((resolve) => {
       const [file = '', ...args] = command;

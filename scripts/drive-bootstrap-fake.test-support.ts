@@ -62,7 +62,11 @@ export function fakeDrive(options: { failOnCall?: number } = {}) {
   const key: { role: string | null } = { role: null };
   const calls: Call[] = [];
   const logs: string[] = [];
-  const commands: { command: readonly string[]; stdin?: string }[] = [];
+  const commands: {
+    command: readonly string[];
+    stdin?: string;
+    consent?: boolean;
+  }[] = [];
 
   const page = (id: string): FakePage => {
     const found = pages.get(id);
@@ -258,8 +262,10 @@ export function fakeDrive(options: { failOnCall?: number } = {}) {
         if (key.role === null) throw new HttpError(401, 'no key');
         const driveId = page(match[1]).driveId;
         const custom = key.role === 'member' ? null : key.role;
+        const customRoleName =
+          roles.find((role) => role.id === custom)?.name ?? null;
         return {
-          driveScopes: [{ id: driveId, customRoleId: custom }],
+          driveScopes: [{ id: driveId, customRoleId: custom, customRoleName }],
           page: { id: match[1], permissions: keyGrant() },
         };
       },
@@ -301,7 +307,7 @@ export function fakeDrive(options: { failOnCall?: number } = {}) {
       throw new HttpError(404, `no route ${method} ${path}`);
     },
     run: async (command, opts) => {
-      commands.push({ command, stdin: opts?.stdin });
+      commands.push({ command, stdin: opts?.stdin, consent: opts?.consent });
       if (command[1] !== 'keys') return { code: 0, stdout: '' };
       key.role = command[command.indexOf('--role') + 1] ?? null;
       return { code: 0, stdout: 'PAGESPACE_TOKEN=mcp_fakeTokenDoNotPrint\n' };
@@ -314,8 +320,26 @@ export function fakeDrive(options: { failOnCall?: number } = {}) {
     writeText: (path, text) => void files.set(path, text),
     log: (line) => void logs.push(line),
   };
+  /**
+   * The drive's own minted key as a credential: refused once none was
+   * minted, and (`rolesRefused`) refused the roles listing, as a server
+   * that keeps it for owner keys would.
+   */
+  const agentKeyTransport = (
+    agentOptions: { rolesRefused?: boolean } = {},
+  ): Transport => ({
+    ...transport,
+    api: <T>(method: string, path: string, body?: unknown): Promise<T> => {
+      if (key.role === null)
+        return Promise.reject(new HttpError(401, 'no key'));
+      if (agentOptions.rolesRefused && /\/roles(?:\/|$)/.test(path))
+        return Promise.reject(new HttpError(403, 'owner key required'));
+      return transport.api<T>(method, path, body);
+    },
+  });
   return {
     transport,
+    agentKeyTransport,
     drives,
     pages,
     statuses,
