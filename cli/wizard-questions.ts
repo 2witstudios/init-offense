@@ -174,9 +174,7 @@ async function askDisplay(deps: WizardDeps, flags: Flags): Promise<string> {
   const fallback = flags.name
     ? defaultDisplay(flags.name)
     : defaultDisplay(defaultName(flags) ?? 'my-app');
-  // Code is never made public without an explicit choice: --yes keeps it
-  // private, and the summary explains how to make it public.
-  if (flags.yes) return 'private';
+  if (flags.yes) return fallback;
   return deps.prompt.text('What is your app called?', fallback, displayProblem);
 }
 
