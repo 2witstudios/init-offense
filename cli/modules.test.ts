@@ -36,11 +36,13 @@ describe('copy exclusions', () => {
       '.claude/skills/x/SKILL.md',
       'packages/db/tsconfig.tsbuildinfo',
       'verify-logs/lint.log',
+      'CHANGELOG.md',
+      'docs/CHANGELOG.md',
     ];
     assert({
       given: 'template-relative paths',
       should:
-        'exclude cli/, create/, dependencies, build output, secrets and pu runtime state',
+        "exclude cli/, create/, the template's own CHANGELOG, dependencies, build output, secrets and pu runtime state",
       actual: paths.filter((path) => !isExcluded(path)),
       expected: [
         'apps/web/src/app/page.tsx',
@@ -49,6 +51,7 @@ describe('copy exclusions', () => {
         '.pu/config.yaml',
         '.pu/agent-context.md',
         '.claude/skills/x/SKILL.md',
+        'docs/CHANGELOG.md',
       ],
     });
   });
