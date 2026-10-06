@@ -87,6 +87,38 @@ describe('drive:bootstrap --check credentials', () => {
     });
   });
 
+  test('with only the drive key holding another editing role', async () => {
+    const fake = seeded();
+    await bootstrap(fake);
+    const driveId = fake.drives[0]?.id ?? '';
+    fake.roles.push({
+      id: 'rEditor0000000000000000',
+      driveId,
+      name: 'Editor',
+      driveWidePermissions: { canView: true, canEdit: true, canShare: false },
+    });
+    fake.key.role = 'rEditor0000000000000000';
+    assert({
+      given:
+        'a refused roles listing and a key that can edit the Roadmap but holds a custom "Editor" role',
+      should: 'fail the role check by the role name the key reports',
+      actual: await check(
+        fake,
+        { bootstrap: false, agentKey: true },
+        { rolesRefused: true },
+      ),
+      expected: {
+        code: 1,
+        report: [
+          'drive check FAILED:',
+          '  - PAGESPACE_TOKEN: does not hold the "Agent" role: rerun `bun drive:bootstrap` to mint a key with the Agent role, then revoke the old one (`pagespace keys list`, `pagespace keys revoke`)',
+          'not checked:',
+          '  - agentRole: the "Agent" role\'s drive-wide grants were not checked (listing roles needs an owner key: set PAGESPACE_BOOTSTRAP_TOKEN)',
+        ].join('\n'),
+      },
+    });
+  });
+
   test('with no credential', async () => {
     const fake = seeded();
     await bootstrap(fake);
