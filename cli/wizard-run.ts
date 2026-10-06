@@ -5,7 +5,13 @@
 import { join } from 'node:path';
 import type { Accounts } from './wizard-accounts';
 import type { Created } from './wizard-create';
-import { act, display, WizardStop, type WizardDeps } from './wizard-deps';
+import {
+  act,
+  display,
+  WizardStop,
+  type Stopped,
+  type WizardDeps,
+} from './wizard-deps';
 import {
   DEFAULT_PORTS,
   pickPorts,
@@ -142,12 +148,13 @@ function choosePorts(deps: WizardDeps): Ports {
   return ports;
 }
 
+/** Polls until the app answers, then opens `urls`; false if it never did. */
 async function openWhenReady(
   deps: WizardDeps,
   url: string,
   urls: readonly string[],
   exited: () => boolean,
-) {
+): Promise<boolean> {
   for (
     let waited = 0;
     waited < READY_TIMEOUT_MS && !exited();
@@ -155,10 +162,43 @@ async function openWhenReady(
   ) {
     if (await deps.reachable(url)) {
       urls.forEach((target) => deps.open(target));
-      return;
+      return true;
     }
     await deps.sleep(READY_POLL_MS);
   }
+  return false;
+}
+
+// next dev and Bun.serve: "Failed to start server. Is port 3000 in use?";
+// Node's listen error: "EADDRINUSE: address already in use :::3000".
+const BUSY_PORT = /Is port (\d+) in use|EADDRINUSE\b[^\n]*?:(\d+)/g;
+const ANSI = new RegExp(String.raw`\u001b\[[0-9;]*m`, 'g');
+
+/** The ports the dev server's output says were taken, in order, once each. */
+function busyPorts(output: string): string[] {
+  const text = output.replace(ANSI, '');
+  const ports = [...text.matchAll(BUSY_PORT)].map(
+    (match) => match[1] ?? match[2] ?? '',
+  );
+  return [...new Set(ports)];
+}
+
+const listed = (ports: readonly string[]): string =>
+  ports.length === 1
+    ? `port ${ports[0]} is`
+    : `ports ${ports.slice(0, -1).join(', ')} and ${ports.at(-1)} are`;
+
+/** Why the dev server exited before it answered, and how to start again. */
+function startFailure(target: string, appUrl: string, stopped: Stopped) {
+  const ports = busyPorts(stopped.output);
+  const restart = `cd ${target} && bun slot:up && bun dev`;
+  return new WizardStop(
+    ports.length > 0
+      ? `\nThe app did not start: ${listed(ports)} already in use, probably by another app's dev server. ` +
+          `Stop that app, then start this one again: ${restart}`
+      : `\nThe app did not start: bun dev exited with code ${stopped.code} before ${appUrl} answered. ` +
+          `Fix the error above, then start it again: ${restart}`,
+  );
 }
 
 /** Ports, database, summary, then the dev server in the foreground. */
@@ -211,22 +251,33 @@ export async function runLocally(
     return;
   }
   deps.log(`  ${display(dev, { cwd: accounts.target })}`);
+  await runDevServer(deps, accounts.target, appUrl, drive);
+}
+
+/** `bun dev` in the foreground; fails if it exits before the app answers. */
+async function runDevServer(
+  deps: WizardDeps,
+  target: string,
+  appUrl: string,
+  drive: string | null,
+): Promise<void> {
   const release = deps.holdInterrupts();
   let done = false;
   const exited = deps.runner
-    .start(dev, { cwd: accounts.target })
+    .start(['bun', 'dev'], { cwd: target })
     .finally(() => {
       done = true;
     });
-  await openWhenReady(
+  const ready = await openWhenReady(
     deps,
     `${appUrl}/sign-in`,
     [`${appUrl}/sign-in`, ...(drive ? [drive] : [])],
     () => done,
   );
-  await exited;
-  release();
+  const stopped = await exited;
+  const interrupted = release();
+  if (!ready && !interrupted) throw startFailure(target, appUrl, stopped);
   deps.log(
-    `\nThe app stopped. Start it again any time: cd ${accounts.target} && bun slot:up && bun dev`,
+    `\nThe app stopped. Start it again any time: cd ${target} && bun slot:up && bun dev`,
   );
 }

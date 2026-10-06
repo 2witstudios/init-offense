@@ -40,10 +40,19 @@ review gate (`wizard-review-app.ts`), and the local run (`wizard-run.ts`, ports 
   shown; the CLI's post-mint MCP-client tips are not, unless the mint
   fails (`scripts/pagespace-consent.ts`).
 - **Ports.** Postgres from 15432, Redis from 6379, the app from 3000 and
-  realtime from 3011, each moved up to the next free port. The stack ports
-  go to `.env` as `<SLUG>_POSTGRES_PORT` / `<SLUG>_REDIS_PORT` with every
-  Postgres and Redis URL before `bun slot:up`; a moved app port is written
-  after it, because `slot:up` resets the main checkout's app ports.
+  realtime from 3011, each moved up to the next free port. A port is free
+  only when it binds on 127.0.0.1, 0.0.0.0 and :: (`scripts/port-probe.ts`,
+  shared with `slot:up`): on macOS a loopback bind succeeds while another
+  project's `next dev` holds `*:3000`. A host without IPv6 does not block a
+  port. The stack ports go to `.env` as `<SLUG>_POSTGRES_PORT` /
+  `<SLUG>_REDIS_PORT` with every Postgres and Redis URL before
+  `bun slot:up`; a moved app port is written after it, because `slot:up`
+  resets the main checkout's app ports.
+- **Starting the app.** `bun dev` runs in the foreground with its output
+  shown (and its last 16 KB kept); the browser opens once the sign-in page
+  answers. If `bun dev` exits before that (and not because of Ctrl-C), the
+  wizard fails with exit 1, naming the busy ports when the output says
+  `Is port N in use?` or `EADDRINUSE`, and prints the restart command.
 - **Visibility.** When GitHub is chosen, step 1 probes
   `gh api user --jq .plan.name` (read-only; re-probed after sign-in when
   gh could not answer yet). GitHub reports the plan only to a token with
