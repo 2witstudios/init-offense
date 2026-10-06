@@ -18,7 +18,8 @@ branch and its open PR).
    it, and finish with `git status --short` empty.
 4. Report only findings you verified, each as CONFIRMED (reproduced, with a
    concrete triggering scenario) or SUSPECTED (what would confirm it), with
-   severity and file:line. No style nits.
+   severity and file:line. Nits are allowed and counted in the verdict
+   line; a nit is filed only when it needs a change.
 5. A verdict with no findings is refused unless you ran the integration
    gate (`gates.integrationCommand` in `project.config.json`) and at least
    one negative control.

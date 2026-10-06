@@ -5,8 +5,8 @@ the Acme PageSpace drive, under `Reviews/<Epic>`, not in the
 repository — point-in-time documents rot into misinformation when committed
 at the root. The template below is the contract; keep sections in this order.
 
-The record is also what gates autonomous merges. Its page title ends
-with the full 40-character head SHA, and its `Candidate:` line names that
+The record is also what gates autonomous merges. Its page title contains
+the exact full 40-character head SHA, and its `Candidate:` line names that
 SHA, the PR, the builder the PR body declares and the reviewer. When the
 record's link lands on the PR, the review-record workflow reads it and sets
 the `review-record` check through the review-record GitHub App. The check
@@ -105,6 +105,10 @@ SUSPECTED (what would confirm it). Report only what you verified.
 Only check a finding once its fix is verified in the code, not when the
 fix is claimed.
 
+Nits are allowed: list each as a `nit` finding and count it in the verdict
+line. A nit is filed only when it needs a change; one that needs none says
+`no change` in its fix column and is not filed.
+
 Where an unfixed finding goes is decided by one question: is the leaf it
 belongs to still open? Open leaf: a follow-up leaf under that phase, always,
 whether or not the PR merged. Leaf already Done, or no leaf owns it: an
@@ -112,7 +116,7 @@ whether or not the PR merged. Leaf already Done, or no leaf owns it: an
 names this record as its origin. Say which in the finding's fix column.
 
 Filing is the reviewer's job, not a suggestion: a record is not finished
-while any unfixed finding lacks the page id of the leaf or issue that now
+while any unfixed finding that needs a change lacks the page id of the leaf or issue that now
 carries it. "Out of scope for this PR" is a reason to file, never a reason
 to leave the finding in prose.
 

@@ -27,8 +27,11 @@ pu status | pu logs <agent> | pu attach <agent>
 pu kill --agent <agent> && pu clean
 ```
 
-A builder gets its own worktree. A reviewer joins the worktree it reviews
-with `--worktree`. Run `bun install --frozen-lockfile` and `bun slot:up` in a
+A builder gets its own worktree. A reviewer reviews the PR's exact head
+SHA, preferably in its own worktree checked out detached at that SHA so the
+builder's later pushes cannot move it; joining the builder's worktree with
+`--worktree` is acceptable when that worktree is at the SHA. Either way the
+reviewer leaves the tree clean and removes a worktree it added. Run `bun install --frozen-lockfile` and `bun slot:up` in a
 worktree when the work needs dependencies or services
 ([ADR 0034](../decisions/0034-shared-stack-slots.md)); agents decide that for
 themselves. Agents report to whoever spawned them, so the owner never relays
