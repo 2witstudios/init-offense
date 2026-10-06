@@ -6,7 +6,9 @@ separately and changes only when the bootstrapper itself changes.
 
 ## Unreleased
 
-Everything since the template was extracted; becomes 0.1.0 once a fresh wizard run passes end to end with no template changes.
+Everything the template ships so far, including what it was extracted with.
+This becomes 0.1.0 once a fresh wizard run passes end to end with no template
+changes.
 
 ### Setup
 
@@ -32,10 +34,13 @@ Everything since the template was extracted; becomes 0.1.0 once a fresh wizard r
   hard-codes one.
 - `bun drive:bootstrap` builds or repairs the drive idempotently; `--check`
   verifies it, including that the agent key can edit.
-- `bun plan:review` with a choice of read-only reviewer: Codex (with a
-  model), Claude Code or OpenCode.
+- `bun plan:review` with a choice of read-only reviewer: Codex (the default),
+  Claude Code or OpenCode, each with an optional `--model`.
 - Board, decision, review-record and merge follow-up tooling; the
-  `review-record` merge gate.
+  `review-record` merge gate, set up by `bun github:review-app` and
+  self-checked with `bun review:check`.
+- Staging deploys and the scheduled auth alert probe stay off until
+  `STAGING_ENABLED` is set.
 
 ### Local development
 

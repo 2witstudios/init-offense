@@ -35,6 +35,7 @@ const requireEnv = (env: Env, key: string): string => {
 const slotEnvKeys = [
   'DATABASE_URL',
   'TEST_DATABASE_URL',
+  'REDIS_URL',
   'REDIS_NAMESPACE',
   'E2E_DATABASE_URL',
   'E2E_REDIS_URL',
@@ -67,6 +68,9 @@ export function slotEnvValues({
     // Every slot URL shares DATABASE_URL's server, so a stale test URL left
     // on an old per-session server cannot split the slot across two stacks.
     TEST_DATABASE_URL: withPath(databaseUrl, slot.testDatabase),
+    // Written back so a moved Redis port (<APP>_REDIS_PORT) reaches the dev
+    // server too, not only the test and e2e URLs derived from it.
+    REDIS_URL: redisUrl,
     REDIS_NAMESPACE: slot.namespace,
     E2E_DATABASE_URL: withPath(databaseUrl, slot.e2eDatabase, e2eRole),
     E2E_REDIS_URL: e2eRedisUrl(redisUrl),

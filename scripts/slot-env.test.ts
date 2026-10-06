@@ -2,7 +2,7 @@ import { expect } from 'bun:test';
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
 import { readEnvValue, rewriteEnv, slotEnvValues } from './slot-env';
 import { deriveSlot, slotMismatches, worktreeSlot } from './slot-model';
-import { slotNaming } from './slot-naming';
+import { slotNaming, withStackPorts } from './slot-naming';
 
 setupRitewayBun();
 
@@ -76,6 +76,7 @@ describe('slot .env values', () => {
           'postgres://acme:local-development-only@localhost:15432/acme',
         TEST_DATABASE_URL:
           'postgres://acme:local-development-only@localhost:15432/acme_test',
+        REDIS_URL: 'redis://localhost:6379',
         REDIS_NAMESPACE: 'acme',
         E2E_DATABASE_URL:
           'postgres://acme_e2e:e2e-loopback-only@localhost:15432/acme_e2e',
@@ -106,6 +107,7 @@ describe('slot .env values', () => {
         DATABASE_URL: 'postgres://acme:pw@127.0.0.1:35432/acme_wt_abc',
         TEST_DATABASE_URL:
           'postgres://acme:pw@127.0.0.1:35432/acme_wt_abc_test',
+        REDIS_URL: 'redis://127.0.0.1:36379',
         REDIS_NAMESPACE: 'acme-wt-abc',
         E2E_DATABASE_URL:
           'postgres://acme_e2e:e2e-loopback-only@127.0.0.1:35432/acme_wt_abc_e2e',
@@ -166,6 +168,33 @@ describe('.env rewriting', () => {
         readEnvValue('A=1\n', 'B'),
       ],
       expected: ['3', undefined],
+    });
+  });
+});
+
+describe('moved stack ports reach every URL', () => {
+  test('a Redis port override moves REDIS_URL too', () => {
+    const main = '/work/acme';
+    const values = slotEnvValues({
+      slot: deriveSlot({ checkout: main, mainCheckout: main }),
+      env: withStackPorts(
+        {
+          DATABASE_URL: 'postgres://acme:pw@localhost:15432/acme',
+          REDIS_URL: 'redis://localhost:6379',
+        },
+        { ACME_REDIS_PORT: '48379' },
+      ),
+    });
+    assert({
+      given: 'ACME_REDIS_PORT=48379 and a .env still naming Redis on 6379',
+      should:
+        'write REDIS_URL on the moved port beside the test and e2e URLs (ISSUE-2)',
+      actual: [values.REDIS_URL, values.TEST_REDIS_URL, values.E2E_REDIS_URL],
+      expected: [
+        'redis://localhost:48379',
+        'redis://localhost:48379/1',
+        'redis://localhost:48379/2',
+      ],
     });
   });
 });

@@ -33,12 +33,20 @@ const EXCLUDED_SEGMENTS = new Set([
 const EXCLUDED_FILES = new Set(['.env', '.env.local', '.env.agent']);
 const PU_KEPT = new Set(['.pu/config.yaml', '.pu/agent-context.md']);
 
+/**
+ * The generator (cli/), the npm bootstrapper (create/) and the template's own
+ * release history stay with the template; a new project starts its own.
+ */
+const TEMPLATE_ONLY_ROOTS = new Set(['cli', 'create']);
+const TEMPLATE_ONLY_FILES = new Set(['CHANGELOG.md']);
+const templateOnly = (path: string, root: string): boolean =>
+  TEMPLATE_ONLY_ROOTS.has(root) || TEMPLATE_ONLY_FILES.has(path);
+
 /** True when a template-relative path must not reach the new project. */
 export function isExcluded(path: string): boolean {
   const segments = path.split('/');
   const base = segments.at(-1) ?? '';
-  // The generator (cli/) and the npm bootstrapper (create/) stay with the template.
-  if (segments[0] === 'cli' || segments[0] === 'create') return true;
+  if (templateOnly(path, segments[0] ?? '')) return true;
   if (segments.some((segment) => EXCLUDED_SEGMENTS.has(segment))) return true;
   if (EXCLUDED_FILES.has(base)) return true;
   if (base.endsWith('.tsbuildinfo')) return true;
