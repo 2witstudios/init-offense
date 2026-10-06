@@ -239,7 +239,7 @@ export function applyRefusal(input: {
   if (input.login !== input.owner)
     return `Only the owner (${input.owner}) applies; gh is authenticated as ${input.login ?? 'nobody'}.`;
   return input.appId === undefined
-    ? 'Set the Actions variable REVIEW_RECORD_APP_ID to the review-record App id first (GRD-6.2).'
+    ? 'Set up the review-record App first: bun github:review-app (it sets the Actions variable REVIEW_RECORD_APP_ID).'
     : undefined;
 }
 

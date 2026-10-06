@@ -155,6 +155,7 @@ describe('runLocally', () => {
     await runLocally(fake.deps, { yes: true, dryRun: false }, accounts, {
       drive: true,
       pushed: false,
+      reviewGate: false,
     });
     assert({
       given: 'Postgres and app default ports taken',

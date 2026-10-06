@@ -46,7 +46,11 @@ computer, in about 5 to 10 minutes. Every command is shown before it runs.
    (`pagespace login`), opening the PageSpace sign-up page if you have no
    account yet.
 4. **Create.** Generates the project, creates the GitHub repository, provisions the project's PageSpace drive with a temporary
-   key that is revoked afterwards, and pushes (asking first).
+   key that is revoked afterwards, and pushes (asking first). Then it
+   offers the **review gate**: a small GitHub App that only lets
+   independently reviewed PRs merge. Saying yes (the default) takes two
+   clicks in your browser, "Create GitHub App" and "Install", and the
+   wizard does the rest (`bun github:review-app`).
 5. **Run.** Picks free local ports, starts Postgres and Redis
    (`bun slot:up`), starts `bun dev` and opens the sign-in page and your
    drive. Sign-in links print in that terminal as `[dev-mail]` lines until
@@ -65,7 +69,7 @@ out; the wizard's summary says so, and
 
 Useful flags: `--yes` (accept the defaults), `--name <slug>`,
 `--display <name>`, `--owner <github owner>`, `--public` or
-`--private`, `--no-github`,
+`--private`, `--no-github`, `--no-review-app`,
 `--no-drive`, `--no-run` and `--dry-run` (show every action, run
 none). From a checkout of this template the same setup is
 `bun cli/wizard.ts my-app`; see `cli/README.md`.
@@ -135,9 +139,11 @@ create, so a MEMBER key fails every board write. `bun drive:bootstrap
 Roadmap; when it cannot, rerunning `bun drive:bootstrap` mints a
 replacement (revoke the old key with `pagespace keys revoke`).
 
-Unless `--no-github` is given, the CLI creates the repository, pushes
-`main`, and applies the branch ruleset and required checks named in
-`project.config.json` (`gates.requiredChecks`).
+Unless `--no-github` is given, the wizard creates the repository and
+pushes `main`. With the review gate (`bun github:review-app`, offered by
+the wizard and runnable any time) it also creates the review-record App
+and applies the branch ruleset with the required checks named in
+`project.config.json` (`gates.requiredChecks`) plus `review-record`.
 
 ### Manual steps that remain
 
@@ -148,11 +154,10 @@ do them for you:
    agents, give it write access, and fill in `.env.agent` in the main
    checkout from `.env.agent.example`. Until then agents act as the owner
    and `bun doctor` warns.
-2. **Review-record GitHub App.** Create a GitHub App that mints the
-   `review-record` check, install it on the repository, and store its id and
-   private key as the `REVIEW_RECORD_APP_ID` repository variable and the
-   `REVIEW_RECORD_APP_KEY` repository secret. Then require `review-record` in the `main` ruleset;
-   see [review record](docs/development/review-record.md).
+2. **Review gate, if you skipped it.** Run `bun github:review-app`: two
+   browser clicks create and install the review-record GitHub App, and
+   the command stores its id and key and requires `review-record` in the
+   `main` ruleset; see [review record](docs/development/review-record.md#setting-up-the-review-record-app).
 3. **Resend.** Verify a sending domain and set `RESEND_API_KEY` and
    `AUTH_EMAIL_FROM` as deploy secrets (and in `.env` to send real mail
    locally); see [auth delivery](docs/operations/auth-delivery.md). Local

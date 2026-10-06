@@ -1,10 +1,10 @@
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
+import { openerCommand } from '../scripts/browser';
 import { slugProblem } from './rename';
 import {
   dockerState,
   installPlan,
   neededTools,
-  openerCommand,
   shown,
   suggestSlug,
   type Host,

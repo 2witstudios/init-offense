@@ -54,10 +54,10 @@ function reportReferences(
 
 const humanSteps = (options: Options): string[] => [
   'Create the agent machine user, give it access to the repository, and fill .env.agent from .env.agent.example.',
-  'Create the review-record GitHub App, install it on the repository, and set the REVIEW_RECORD_APP_ID / REVIEW_RECORD_APP_KEY secrets.',
+  'Push, then run `bun github:review-app` in the new project: two browser clicks create and install the review-record GitHub App, store its id and key, and apply the ruleset.',
   'Add RESEND_API_KEY (and AUTH_EMAIL_FROM) to .env and to the deploy secrets for magic-link email.',
   `Create the Fly apps (${options.slug}-staging, ${options.slug}-staging-migrate, Postgres, Redis) per docs/operations/deploy-staging.md.`,
-  'Run `bun github:rules --apply` once the repository is pushed, then `bun doctor`.',
+  'Run `bun doctor`.',
 ];
 
 type Context = {
@@ -200,7 +200,7 @@ function githubStep(context: Context): boolean {
   ]);
   if (created)
     deps.log(
-      'Next: `git push -u origin main`, then run `bun github:rules --apply` in the new project.',
+      'Next: `git push -u origin main`, then run `bun github:review-app` in the new project.',
     );
   return created;
 }

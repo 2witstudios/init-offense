@@ -9,6 +9,7 @@ import type { Accounts } from './wizard-accounts';
 import { act, WizardStop, type WizardDeps } from './wizard-deps';
 import { withTemporaryKey } from './wizard-pagespace';
 import type { Flags } from './wizard-questions';
+import { offersReviewGate, setUpReviewGate } from './wizard-review-app';
 
 const projectOptions = (accounts: Accounts): Options => ({
   target: accounts.target,
@@ -24,7 +25,7 @@ const projectOptions = (accounts: Accounts): Options => ({
   yes: true, // every action was confirmed in the plan below
 });
 
-function planLines(accounts: Accounts): string[] {
+function planLines(flags: Flags, accounts: Accounts): string[] {
   const repo = `${accounts.owner}/${accounts.slug}`;
   return [
     `Copy the template into ${accounts.target} and name it "${accounts.display}" (${accounts.slug})`,
@@ -38,6 +39,11 @@ function planLines(accounts: Accounts): string[] {
         ]
       : []),
     ...(accounts.github ? ['Push the code to GitHub (asks first)'] : []),
+    ...(offersReviewGate(flags, accounts)
+      ? [
+          'Set up the review gate, a GitHub App that only lets reviewed PRs merge (asks first; two clicks in your browser)',
+        ]
+      : []),
     ...(accounts.run
       ? [
           'Start the database and the app on this computer, then open them in your browser',
@@ -157,7 +163,12 @@ async function push(
   return pushed;
 }
 
-export type Created = { readonly drive: boolean; readonly pushed: boolean };
+export type Created = {
+  readonly drive: boolean;
+  readonly pushed: boolean;
+  /** The review-record App is set up and review-record is required. */
+  readonly reviewGate: boolean;
+};
 
 /** Shows the plan, asks once, then creates everything. */
 export async function createEverything(
@@ -167,7 +178,7 @@ export async function createEverything(
 ): Promise<Created> {
   deps.log('\n— Step 4 of 5: create —');
   deps.log('Here is what happens next:');
-  planLines(accounts).forEach((line, index) =>
+  planLines(flags, accounts).forEach((line, index) =>
     deps.log(`  ${index + 1}. ${line}`),
   );
   if (
@@ -180,5 +191,6 @@ export async function createEverything(
   generate(deps, flags, accounts);
   const drive = accounts.drive && (await bootstrapDrive(deps, flags, accounts));
   const pushed = accounts.github && (await push(deps, flags, accounts));
-  return { drive, pushed };
+  const reviewGate = await setUpReviewGate(deps, flags, accounts, pushed);
+  return { drive, pushed, reviewGate };
 }

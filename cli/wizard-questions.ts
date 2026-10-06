@@ -24,6 +24,8 @@ export type Flags = {
   readonly visibility?: Visibility | undefined;
   readonly drive?: boolean | undefined;
   readonly run?: boolean | undefined;
+  /** false with --no-review-app: do not offer the review gate. */
+  readonly reviewApp?: boolean | undefined;
   readonly yes: boolean;
   readonly dryRun: boolean;
 };
@@ -56,6 +58,8 @@ Options:
   --no-github        do not create a GitHub repository
   --no-drive         do not create a PageSpace drive
   --no-run           do not start the app at the end
+  --no-review-app    do not set up the review gate (the review-record
+                     GitHub App; later: bun github:review-app)
   --yes, -y          accept every default without asking
   --dry-run          show every action without running any of them
   --help, -h         show this help`;
@@ -72,6 +76,7 @@ const OPTIONS = {
   private: { type: 'boolean' },
   drive: { type: 'boolean' },
   run: { type: 'boolean' },
+  'review-app': { type: 'boolean' },
   yes: { type: 'boolean', short: 'y', default: false },
   'dry-run': { type: 'boolean', default: false },
   help: { type: 'boolean', short: 'h', default: false },
@@ -141,6 +146,7 @@ export function parseWizardFlags(
     visibility: visibilityFlag(values),
     drive: values.drive,
     run: values.run,
+    reviewApp: values['review-app'],
     yes: values.yes,
     dryRun: values['dry-run'],
   };
@@ -174,9 +180,7 @@ async function askDisplay(deps: WizardDeps, flags: Flags): Promise<string> {
   const fallback = flags.name
     ? defaultDisplay(flags.name)
     : defaultDisplay(defaultName(flags) ?? 'my-app');
-  // Code is never made public without an explicit choice: --yes keeps it
-  // private, and the summary explains how to make it public.
-  if (flags.yes) return 'private';
+  if (flags.yes) return fallback;
   return deps.prompt.text('What is your app called?', fallback, displayProblem);
 }
 

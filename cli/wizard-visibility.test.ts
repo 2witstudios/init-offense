@@ -131,6 +131,16 @@ describe('wizard visibility', () => {
     });
   });
 
+  test('--yes keeps the app name its default', async () => {
+    const { text } = await dryRun('free');
+    assert({
+      given: '--yes with --name viz and no --display',
+      should: 'name the app from the slug, never after the visibility',
+      actual: text.includes('App: "Viz" (viz)'),
+      expected: true,
+    });
+  });
+
   test('--public on a free plan creates a public repository', async () => {
     const { code, text } = await dryRun('free', ['--public']);
     assert({

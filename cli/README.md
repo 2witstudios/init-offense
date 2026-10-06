@@ -8,7 +8,7 @@ non-interactively (`init.ts new`).
 ```sh
 bun cli/wizard.ts [dir] [--name <slug>] [--display <name>] [--dir <path>] \
   [--owner <owner>] [--public | --private] [--no-github] [--no-drive] [--no-run] \
-  [--yes] [--dry-run]
+  [--no-review-app] [--yes] [--dry-run]
 ```
 
 `init-offense my-app` (the npm package in `create/`, also `npx init-offense`) checks Git and
@@ -20,8 +20,8 @@ Steps, each shown before it runs: questions (`wizard-questions.ts`), a
 tool checklist with consented installs (`wizard-prereqs.ts`, decision
 table in `wizard-plan.ts`), GitHub and PageSpace sign-in
 (`wizard-accounts.ts`), generation through `createProject` from
-`init.ts` plus the drive bootstrap and push (`wizard-create.ts`), and the
-local run (`wizard-run.ts`, ports and `.env` in `wizard-env.ts`).
+`init.ts` plus the drive bootstrap and push (`wizard-create.ts`), the
+review gate (`wizard-review-app.ts`), and the local run (`wizard-run.ts`, ports and `.env` in `wizard-env.ts`).
 
 - **Temporary key.** The drive bootstrap needs an unscoped key, so the
   wizard runs `pagespace keys create --all-drives --name <slug>-setup
@@ -52,6 +52,17 @@ local run (`wizard-run.ts`, ports and `.env` in `wizard-env.ts`).
   could not read, worded "if your GitHub plan is free") gets a note in the
   final summary with the one-line fix:
   `gh repo edit <owner>/<slug> --visibility public --accept-visibility-change-consequences`.
+- **Review gate.** After the push the wizard asks "Set up the review
+  gate (a small GitHub App that only lets reviewed PRs merge)? It needs
+  two clicks in your browser." (default yes; `--yes` says yes,
+  `--no-review-app` skips it) and runs the new project's
+  `bun github:review-app` attached to the terminal: the manifest flow,
+  the key stored in the main-only `review-record` environment, the
+  install, `REVIEW_RECORD_APP_ID`, then `bun github:rules --apply`
+  ([review record](../docs/development/review-record.md#setting-up-the-review-record-app)).
+  The dry run prints the same steps from `reviewAppSteps` in
+  `scripts/github-review-app-plan.ts`; a failure or a skip leaves the app
+  working and puts the command in the summary's next steps.
 - **Dry run.** `--dry-run` still runs read-only probes (versions,
   `docker info`, `gh auth status`, `pagespace whoami`) but executes,
   writes and opens nothing.
@@ -124,17 +135,18 @@ bun cli/init.ts new <dir> --name <slug> [--display "Widget"] [--repo owner/name]
    `git add -A && git commit -m "chore: initialize <slug> from init-offense"`.
 6. **GitHub** (unless `--no-github`, confirmed unless `--yes`):
    `gh repo create <repo> --private --source <dir> --remote origin`
-   (or `--public`). It does not push or apply rulesets; run
-   `git push -u origin main` and then `bun github:rules --apply` yourself.
-   On a free GitHub plan that apply works only on a public repository: on
-   a private one GitHub answers 403 "Upgrade to GitHub Pro" and
-   `github:rules` exits 1 with the fix instead of succeeding.
+   (or `--public`). It does not push or set up the review gate; run
+   `git push -u origin main` and then `bun github:review-app` yourself
+   (it creates the review-record App and applies the rulesets). On a free
+   GitHub plan rulesets apply only to a public repository: on a private
+   one it explains why `review-record` is not enforced, and
+   `bun github:rules --apply` exits 1 on GitHub's 403 with the fix.
 7. **Drive** (unless `--no-drive`, confirmed unless `--yes`):
    `bun scripts/drive-bootstrap.ts`, or an instruction when the script is
    missing.
 8. Prints the remaining human steps: the agent machine user and
-   `.env.agent`, the review-record GitHub App (`REVIEW_RECORD_APP_ID`,
-   `REVIEW_RECORD_APP_KEY`), `RESEND_API_KEY`, and the Fly apps.
+   `.env.agent`, `bun github:review-app` (the review-record GitHub App),
+   `RESEND_API_KEY`, and the Fly apps.
 
 ## Tests
 
