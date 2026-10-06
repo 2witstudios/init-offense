@@ -62,7 +62,11 @@ export function fakeDrive(options: { failOnCall?: number } = {}) {
   const key: { role: string | null } = { role: null };
   const calls: Call[] = [];
   const logs: string[] = [];
-  const commands: { command: readonly string[]; stdin?: string }[] = [];
+  const commands: {
+    command: readonly string[];
+    stdin?: string;
+    consent?: boolean;
+  }[] = [];
 
   const page = (id: string): FakePage => {
     const found = pages.get(id);
@@ -303,7 +307,7 @@ export function fakeDrive(options: { failOnCall?: number } = {}) {
       throw new HttpError(404, `no route ${method} ${path}`);
     },
     run: async (command, opts) => {
-      commands.push({ command, stdin: opts?.stdin });
+      commands.push({ command, stdin: opts?.stdin, consent: opts?.consent });
       if (command[1] !== 'keys') return { code: 0, stdout: '' };
       key.role = command[command.indexOf('--role') + 1] ?? null;
       return { code: 0, stdout: 'PAGESPACE_TOKEN=mcp_fakeTokenDoNotPrint\n' };

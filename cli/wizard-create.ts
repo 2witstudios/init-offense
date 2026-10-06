@@ -35,7 +35,10 @@ function planLines(flags: Flags, accounts: Accounts): string[] {
       : []),
     ...(accounts.drive
       ? [
-          `Create the "${accounts.display}" PageSpace drive, using a temporary key that is removed afterwards`,
+          // PageSpace mints keys only through browser consent (its key
+          // API refuses a key as the credential), so the drive's own key
+          // cannot be minted with the setup key: two approvals, said upfront.
+          `Create the "${accounts.display}" PageSpace drive; you approve two keys in your browser: a temporary setup key (removed afterwards), then the drive's own key for this project`,
         ]
       : []),
     ...(accounts.github ? ['Push the code to GitHub (asks first)'] : []),

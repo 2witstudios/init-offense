@@ -125,6 +125,16 @@ describe('dry run', () => {
       ],
       expected: [true, true, true, true, true, true],
     });
+    assert({
+      given: 'the plan shown before anything is created',
+      should: 'say upfront that two keys are approved in the browser and which',
+      actual: fake.logs.some((line) =>
+        line.includes(
+          "you approve two keys in your browser: a temporary setup key (removed afterwards), then the drive's own key for this project",
+        ),
+      ),
+      expected: true,
+    });
   });
 });
 

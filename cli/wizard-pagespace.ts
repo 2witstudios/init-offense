@@ -6,7 +6,8 @@
  *
  * `pagespace keys create --show-token` prints exactly one stdout line,
  * `PAGESPACE_TOKEN=mcp_…`, and everything human-readable on stderr, so the
- * wizard captures stdout only and never displays it.
+ * wizard captures stdout only and never displays it, and shows only the
+ * stderr lines needed to approve the key, not the CLI's MCP-client tips.
  */
 import { act, display, type WizardDeps } from './wizard-deps';
 import type { Command } from './wizard-plan';
@@ -54,11 +55,11 @@ const mintCommand = (name: string): Command => [
   '--yes',
 ];
 
-function mint(deps: WizardDeps, name: string): string {
+async function mint(deps: WizardDeps, name: string): Promise<string> {
   const command = mintCommand(name);
   deps.log(`  ${display(command)}`);
   deps.log('  (approve the key in the browser window that opens)');
-  const { code, stdout } = deps.runner.capture(command);
+  const { code, stdout } = await deps.runner.consent(command);
   const token = code === 0 ? extractToken(stdout) : null;
   if (token === null)
     throw new Error(
@@ -110,7 +111,7 @@ export async function withTemporaryKey<T>(
 ): Promise<T> {
   const name = setupKeyName(slug);
   deps.log(
-    `\nCreating a temporary PageSpace key "${name}" (removed again when setup finishes):`,
+    `\nCreating a temporary PageSpace key "${name}" (removed again when setup finishes; approval 1 of 2, the drive's own key follows):`,
   );
   const release = deps.holdInterrupts();
   try {
@@ -118,7 +119,7 @@ export async function withTemporaryKey<T>(
       deps.log(`  [dry run] ${display(mintCommand(name))}`);
       return await use('<temporary key>');
     }
-    return await use(mint(deps, name));
+    return await use(await mint(deps, name));
   } finally {
     revokeKey(deps, name, dryRun);
     release();

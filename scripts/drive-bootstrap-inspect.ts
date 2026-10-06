@@ -31,7 +31,14 @@ export type Transport = {
   readonly api: <T>(method: string, path: string, body?: unknown) => Promise<T>;
   readonly run: (
     command: readonly string[],
-    options?: { readonly stdin?: string },
+    options?: {
+      readonly stdin?: string;
+      /**
+       * A `pagespace keys create` consent flow: its stderr is filtered to
+       * the lines the user needs to approve (`pagespace-consent.ts`).
+       */
+      readonly consent?: boolean;
+    },
   ) => Promise<{ readonly code: number; readonly stdout: string }>;
   readonly readText: (path: string) => string | null;
   readonly writeText: (path: string, text: string) => void;

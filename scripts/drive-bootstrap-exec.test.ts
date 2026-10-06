@@ -232,6 +232,13 @@ describe('the Agent role and key', () => {
       actual: [mint?.[roleAt + 1], mint?.[nameAt + 1]],
       expected: [fake.roles[0]?.id, `${config.name}-agent`],
     });
+    assert({
+      given: 'the mint command',
+      should:
+        'run as a consent flow, so only its approval lines reach the user',
+      actual: fake.commands.find((c) => c.command[1] === 'keys')?.consent,
+      expected: true,
+    });
   });
 
   test('a key minted with MEMBER is caught and replaced', async () => {

@@ -31,6 +31,14 @@ review gate (`wizard-review-app.ts`), and the local run (`wizard-run.ts`, ports 
   `PAGESPACE_BOOTSTRAP_TOKEN`, and in a `finally` revokes it
   (`pagespace keys list --json` → `pagespace keys revoke <id> --yes`) and
   forgets the CLI's local copy (`pagespace logout --key=<slug>-setup`).
+  The bootstrap then mints the drive's own Agent key with
+  `pagespace keys create --drive …`, a second browser approval: PageSpace
+  mints keys only through browser consent (its `POST /api/auth/mcp-tokens`
+  accepts a signed-in session, never a key), so the plan says upfront that
+  two keys are approved. Of each mint's stderr only the consent lines (the
+  browser is opening, a URL to open by hand, a device code, errors) are
+  shown; the CLI's post-mint MCP-client tips are not, unless the mint
+  fails (`scripts/pagespace-consent.ts`).
 - **Ports.** Postgres from 15432, Redis from 6379, the app from 3000 and
   realtime from 3011, each moved up to the next free port. The stack ports
   go to `.env` as `<SLUG>_POSTGRES_PORT` / `<SLUG>_REDIS_PORT` with every

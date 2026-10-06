@@ -18,8 +18,15 @@ export type Runner = {
   readonly probe: (command: Command, options?: RunOptions) => Captured;
   /** Runs attached to the terminal; returns the exit code. */
   readonly run: (command: Command, options?: RunOptions) => number;
-  /** stdin and stderr attached, stdout captured and never shown. */
-  readonly capture: (command: Command, options?: RunOptions) => Captured;
+  /**
+   * A PageSpace consent flow (`pagespace keys create --show-token`): stdin
+   * attached, stdout captured and never shown, stderr filtered to the lines
+   * needed to approve (`scripts/pagespace-consent.ts`).
+   */
+  readonly consent: (
+    command: Command,
+    options?: RunOptions,
+  ) => Promise<Captured>;
   /** A long-running process attached to the terminal (the dev server). */
   readonly start: (command: Command, options?: RunOptions) => Promise<number>;
 };

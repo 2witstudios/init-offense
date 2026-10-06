@@ -52,7 +52,7 @@ describe('keyIdByName', () => {
 const keyFake = (mintCode = 0) =>
   fakeDeps({
     probes: { 'pagespace keys list --json': { code: 0, stdout: LIST } },
-    capture: () => ({
+    consent: () => ({
       code: mintCode,
       stdout: mintCode === 0 ? `PAGESPACE_TOKEN=${TOKEN}\n` : '',
     }),
@@ -146,7 +146,7 @@ describe('revoking when the key list fails', () => {
   test('unknown key', async () => {
     const fake = fakeDeps({
       probes: { 'pagespace keys list --json': { code: 1, stdout: '' } },
-      capture: () => ({ code: 0, stdout: `PAGESPACE_TOKEN=${TOKEN}\n` }),
+      consent: () => ({ code: 0, stdout: `PAGESPACE_TOKEN=${TOKEN}\n` }),
     });
     await withTemporaryKey(fake.deps, 'widget', false, () => {});
     assert({

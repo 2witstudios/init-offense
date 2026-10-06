@@ -47,7 +47,19 @@ import {
   type BootstrapOptions,
   type ExistingState,
 } from './drive-bootstrap-plan';
+import { consentFilter } from './pagespace-consent';
 import { loadProjectConfig, type ProjectConfig } from './project-config';
+
+/** Decodes a byte stream into `push` as it arrives. */
+async function forward(
+  stream: ReadableStream<Uint8Array>,
+  push: (chunk: string) => void,
+): Promise<void> {
+  const decoder = new TextDecoder();
+  for await (const bytes of stream)
+    push(decoder.decode(bytes, { stream: true }));
+  push(decoder.decode());
+}
 
 type Flags = BootstrapOptions & {
   readonly dryRun: boolean;
@@ -154,10 +166,18 @@ function liveTransport(
             ? 'inherit'
             : new TextEncoder().encode(options.stdin),
         stdout: 'pipe',
-        stderr: 'inherit',
+        stderr: options?.consent ? 'pipe' : 'inherit',
       });
-      const stdout = await new Response(child.stdout).text();
-      return { code: await child.exited, stdout };
+      const filter = consentFilter((line) => console.error(line));
+      const [stdout] = await Promise.all([
+        new Response(child.stdout).text(),
+        child.stderr instanceof ReadableStream
+          ? forward(child.stderr, filter.push)
+          : null,
+      ]);
+      const code = await child.exited;
+      filter.end(code);
+      return { code, stdout };
     },
     readText: (path) => (existsSync(path) ? readFileSync(path, 'utf8') : null),
     writeText: (path, text) => writeFileSync(path, text),
