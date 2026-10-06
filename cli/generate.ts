@@ -19,6 +19,14 @@ import {
 } from './modules';
 import { renamePath, renameText, type Names } from './rename';
 
+/**
+ * The repository string the template's fixtures and docs use for "this
+ * project's repo"; the generator rewrites it to the new repo. It is not the
+ * template's own repository (project.config.json names that, so the
+ * template's CI and GitHub tooling act on 2witstudios/init-offense).
+ */
+const TEMPLATE_REPO_PLACEHOLDER = '2witstudios/acme';
+
 export const TEMPLATE_ROOT = resolve(import.meta.dir, '..');
 
 type Json = Record<string, unknown>;
@@ -68,8 +76,7 @@ export function generateTree(
     slug: options.slug,
     display: options.display,
     repo: options.repo,
-    templateRepo:
-      typeof templateConfig.repo === 'string' ? templateConfig.repo : undefined,
+    templateRepo: TEMPLATE_REPO_PLACEHOLDER,
   };
   const { kept, removed } = partitionFiles(
     templateFiles(templateRoot),

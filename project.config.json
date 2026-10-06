@@ -2,7 +2,7 @@
   "version": 1,
   "name": "init-offense",
   "displayName": "Init Offense",
-  "repo": "2witstudios/acme",
+  "repo": "2witstudios/init-offense",
   "owner": "2witstudios",
   "autonomyEnv": "AGENT_AUTONOMOUS",
   "gates": {
