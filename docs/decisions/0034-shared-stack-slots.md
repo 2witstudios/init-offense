@@ -6,7 +6,10 @@ Amended by the test-state sections below and by
 [ADR 0038](0038-drizzle-1-baseline.md): each slot
 has a third database for the browser suite, the template database is
 gone (slot databases copy `template0`), and the e2e login's access is its
-membership in `acme_web`.
+membership in `acme_web`. Amended 2026-10-05 by "Slot ownership" below: a
+checkout is the main slot only when it is the recorded main checkout, a
+standalone clone gets a slot of its own, and pruning drops only slots whose
+recorded checkout no longer exists.
 
 ## Context
 
@@ -35,7 +38,10 @@ are tiny (`acme` 9 MB, `acme_test` 15 MB).
   underscores, at most 28 characters so every namespace fits
   `REDIS_NAMESPACE`, and may not end in `_test` or `_e2e`, so every
   database and namespace name maps back to exactly one slot. Any other
-  folder name is refused, never normalised into something else.
+  folder name is refused, never normalised into something else. Which
+  checkout is "the main checkout" is decided from ownership records, not
+  from git structure alone; a standalone clone elsewhere gets a
+  `clone_<hash>` slot (see "Slot ownership").
 - **Template database.** `acme_template` holds what a fresh slot needs
   before migrations: the `acme_e2e` role's schema usage and default table
   and sequence privileges. It accepts no connections, so copying from it
@@ -52,14 +58,17 @@ are tiny (`acme` 9 MB, `acme_test` 15 MB).
   the admin connection is whatever the `.env` names. A worktree's ports come
   from a port block claimed in the comment on its dev database: shared by
   every checkout and deleted with the database.
-- **`bun slot:down`** drops the worktree's databases and deletes its Redis
-  keys, including every `t3-` namespace in its test Redis database. It refuses the main checkout.
+- **`bun slot:down`** drops the checkout's own worktree or clone slot and
+  deletes its Redis keys, including every `t3-` namespace in its test Redis
+  database. It refuses the main checkout and a slot recorded for another
+  checkout that still exists.
 - **`bun slot:prune`** (and the start of every `slot:up`) drops the
-  `acme_wt_*` databases and `acme-wt-*` namespaces of worktrees that
-  `git worktree list` no longer shows (a `prunable` entry, whose folder is
-  gone, counts as removed). Names that do not parse as a worktree slot are
-  never touched. Redis keys are removed with `SCAN` and `UNLINK` over the
-  exact `<namespace>:*` pattern, never `FLUSHDB`/`FLUSHALL`.
+  `acme_wt_*` databases and `acme-wt-*` namespaces of slots whose recorded
+  checkout no longer exists on disk. Names that do not parse as a worktree
+  slot are never touched, and neither is a live checkout's slot that the
+  pruning checkout does not recognise. Redis keys are removed with `SCAN`
+  and `UNLINK` over the exact `<namespace>:*` pattern, never
+  `FLUSHDB`/`FLUSHALL`.
 - **Local stack only.** Slot tooling force-drops databases and unlinks
   namespaces, so it refuses a `.env` whose `DATABASE_URL`, `REDIS_URL` or
   `E2E_REDIS_URL` names anything but loopback, before touching Docker or
@@ -76,7 +85,9 @@ are tiny (`acme` 9 MB, `acme_test` 15 MB).
   or namespace (a `.env` copied from the main checkout) and warns about
   orphaned slots. `bun db:reset` accepts only the current slot's two
   databases on loopback and restores the `acme_e2e` grants after
-  recreating `public`.
+  recreating `public`. Both decide the current slot from the ownership
+  records, exactly as `slot:up` does, so a clone whose `.env` still names
+  the main databases is refused.
 - **E2E.** The Playwright config takes `E2E_DATABASE_URL`, `E2E_REDIS_URL`
   and `E2E_REDIS_NAMESPACE` explicitly (CI sets them in `e2e.yml`). A
   missing value is passed as empty and the server refuses to start, so the
@@ -302,19 +313,86 @@ never drops a live run's database; and a suite started by hand is refused.
   `slot:up` anywhere, or `slot:prune`, or its own `slot:down` at handoff.
 - Every checkout depends on one stack; stopping it stops everyone. The
   scripts therefore offer no `infra:down`.
-- The stack is per machine but pruning only knows its own repository's
-  worktrees: two clones of this repository on one machine would each prune
-  the other's worktree slots and share the main slot. Use worktrees of one
-  clone, never a second clone.
+- The stack is per machine. A second clone of the repository is safe: it
+  gets its own clone slot, records it, and prunes nothing it does not know
+  to be dead (see "Slot ownership"). Worktrees of one checkout remain the
+  preferred way to run parallel sessions.
 - `slot:up` starts Compose only when the stack is unreachable, so a branch
   whose compose file differs never recreates the running shared stack;
   changing the stack's configuration is a deliberate operator step.
-- Pruning reads `git worktree list` under the slot lock, so a worktree
-  created and slotted while another `slot:up` waited is never pruned.
+- Pruning reads the ownership records (and, for slots that predate them,
+  `git worktree list`) under the slot lock, so a slot claimed while another
+  `slot:up` waited is never pruned.
 - Two worktree folders that derive the same id (`a-b` and `a_b`) are
-  refused rather than allowed to share a slot.
+  refused rather than allowed to share a slot, and so is a worktree whose id
+  is already recorded for another live checkout (worktrees of two clones
+  with the same folder name).
 - Migration generation is still single-writer (`bun migrations:check`); each
   slot only applies its own branch's migrations to its own databases.
+
+## Slot ownership
+
+The 2026-10-05 finding: the main slot went to whichever checkout was its
+repository's main worktree, and pruning dropped every `acme_wt_*` slot that
+checkout's `git worktree list` did not show. A standalone `git clone` of the
+same repository in another folder (a reviewer's scratch clone for a negative
+control) satisfied both: its `slot:up` took the main checkout's databases,
+namespaces and ports, rewrote its own `.env` onto them, and dropped every
+other agent's worktree slot as "orphaned". Git structure cannot tell the two
+apart, so the rule is now that a slot belongs to the checkout path recorded
+when it was claimed (`scripts/slot-ownership.ts`, pure and tested).
+
+- **Records live on the stack, beside the port blocks.** Every slot's dev
+  database comment records its owner: `acme-slot checkout=<hex path>` on the
+  main database, `acme-slot port-block=<n> checkout=<hex path>` on a worktree
+  or clone slot's. The path is hex-encoded so the comment stays inside the
+  strict literal allowlist of `@acme/db/slots`. Like the port block, the
+  record is shared by every checkout and goes with the database. `slot:up`
+  writes it under the slot lock.
+- **The main slot.** A repository's main checkout gets the main slot only
+  when it is the recorded owner, or when nobody holds it: the main database
+  is missing, or it is the one the stack's image created on a fresh volume
+  (no `acme_test` yet), and the first such `slot:up` claims it. Any other
+  checkout that is its repository's main worktree is a **standalone clone**.
+- **Clone slots.** A clone gets the worktree-kind slot `clone_<8 hex>`, the
+  first hex digits of the SHA3-256 of its absolute path (`c<7 hex>` when a
+  long slug leaves less room), with its own port block and Redis test
+  database. The same clone keeps its slot; a moved clone gets a new one and
+  its old slot, whose recorded path is gone, goes on the next prune. A clone
+  never derives the main slot's names.
+- **Unknown main owner refuses, never guesses.** When the main slot records
+  no owner but was set up (it predates the records) or its recorded checkout
+  no longer exists (the main checkout was moved), every command run from a
+  repository main worktree refuses and names `bun slot:up --claim-main`,
+  which the main checkout runs once. `--claim-main` never takes the main
+  slot from a recorded checkout that still exists, and a git worktree cannot
+  use it. The flag is the operator's assertion that this is the main
+  checkout; it is not offered to anything automated.
+- **A command touches only its own slot.** `slot:up`, `slot:down`,
+  `slot:reset-e2e` and `db:reset` classify the checkout under the slot lock
+  and refuse a slot whose record names another checkout that still exists,
+  so worktrees of two clones that share a folder name cannot share or drop
+  each other's slot. `slot:down` still refuses the main slot.
+- **Pruning drops only the dead.** A slot whose dev database records a
+  checkout is an orphan exactly when that path no longer exists on disk. A
+  slot without a record (claimed before the records, or keys whose database
+  is gone) is pruned only from the main slot's own repository (the recorded
+  main checkout or one of its git worktrees), whose `git worktree list` is
+  authoritative for it, and only when that list no longer shows it; a clone
+  never prunes one. The pruning checkout's own slot is never selected.
+  Every worktree's next `slot:up` writes its record, so unrecorded slots
+  disappear as checkouts are used.
+- **Liveness is a path on disk.** A deleted checkout's slot goes on the next
+  prune anywhere. An empty folder left at the recorded path keeps the slot
+  until it is removed; dropping on a weaker signal would risk a live slot.
+
+Proven against a throwaway stack on free ports: the main checkout claimed
+the main slot, its git worktree got `feat_x`, a scratch clone got
+`clone_<hash>` and pruned nothing, `db:reset` from the clone with the main
+`.env` was refused, `slot:down` in the clone dropped only its own slot, a
+worktree of the clone named `feat-x` was refused, moving the clone gave it a
+new slot and pruned the old one, and an unrecorded legacy slot was pruned
+from the main checkout but not from the clone.
 
 ## Upgrade path
 

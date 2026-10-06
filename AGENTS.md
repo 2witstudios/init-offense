@@ -211,9 +211,10 @@ values in `.env`; initialize with `bun install --frozen-lockfile` and
 4. `bun dev` or the clean-environment `bun dev:agent`
 5. `bun doctor`, then the relevant tests and verification gates
 
-Every checkout (the main checkout and each git worktree or `pu` slot) shares
-one local Postgres and Redis and owns the databases, Redis namespaces and
-ports `bun slot:up` derives from its folder; never hand-edit them. Run
+Every checkout (the main checkout, each git worktree or `pu` slot, and any
+standalone clone) shares one local Postgres and Redis and owns the databases,
+Redis namespaces and ports `bun slot:up` derives and records for it; never
+hand-edit them. Run
 `bun slot:down` at handoff when no reviewer needs the data. See
 [local development](docs/development/local-development.md#parallel-sessions-on-one-machine)
 and [ADR 0034](docs/decisions/0034-shared-stack-slots.md).

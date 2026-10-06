@@ -79,12 +79,21 @@ export function cloneSlotId(checkout: string, budget = maxIdLength): string {
   return `${prefix}${hex.slice(0, Math.min(8, budget - prefix.length))}`;
 }
 
-/** What the main database records: missing, unrecorded (legacy), or a path. */
+/**
+ * Who holds the main slot: nobody yet (`absent`), a checkout from before
+ * ownership records (`unrecorded`), or the recorded checkout path.
+ */
 export type MainRecord =
   | { readonly state: 'absent' }
   | { readonly state: 'unrecorded' }
   | { readonly state: 'recorded'; readonly checkout: string };
 
+/**
+ * Reads the main slot's owner from the main database's comment. The stack's
+ * image creates the main database itself on a fresh volume, so an
+ * unrecorded main database counts as unclaimed until `slot:up` has set the
+ * slot up (its test database exists); only then is it a legacy claim.
+ */
 export function mainRecordOf(
   databases: readonly {
     readonly name: string;
@@ -92,11 +101,10 @@ export function mainRecordOf(
   }[],
 ): MainRecord {
   const main = databases.find(({ name }) => name === databaseBase);
-  if (!main) return { state: 'absent' };
-  const { checkout } = parseSlotClaim(main.comment);
-  return checkout === undefined
-    ? { state: 'unrecorded' }
-    : { state: 'recorded', checkout };
+  const { checkout } = parseSlotClaim(main?.comment);
+  if (checkout !== undefined) return { state: 'recorded', checkout };
+  const setUp = databases.some(({ name }) => name === `${databaseBase}_test`);
+  return main && setUp ? { state: 'unrecorded' } : { state: 'absent' };
 }
 
 const claimHint =

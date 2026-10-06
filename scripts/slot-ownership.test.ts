@@ -65,17 +65,20 @@ describe('slot claim comment', () => {
 
 describe('main record', () => {
   test('reads the owner from the main database comment', () => {
+    const recorded = slotClaimComment({ checkout: main });
+    const test = { name: `${mainDatabase}_test`, comment: null };
     assert({
-      given: 'no main database, one without a record, and one with a record',
-      should: 'report absent, unrecorded and the recorded path',
+      given:
+        'no main database, the image-created one, a set-up one without a record, and a recorded one',
+      should: 'report absent, absent, unrecorded and the recorded path',
       actual: [
         mainRecordOf([{ name: 'acme_wt_a', comment: null }]),
         mainRecordOf([{ name: mainDatabase, comment: null }]),
-        mainRecordOf([
-          { name: mainDatabase, comment: slotClaimComment({ checkout: main }) },
-        ]),
+        mainRecordOf([{ name: mainDatabase, comment: null }, test]),
+        mainRecordOf([{ name: mainDatabase, comment: recorded }, test]),
       ],
       expected: [
+        { state: 'absent' },
         { state: 'absent' },
         { state: 'unrecorded' },
         { state: 'recorded', checkout: main },

@@ -52,7 +52,7 @@ handler logic yet beyond rejecting every connection.
 | `bun db:studio`                                               | Drizzle Studio (local only, never expose)                                                                                                                                                |
 | `bun slot:up`                                                 | Shared stack up, prune orphans, create and migrate this checkout's three databases, provision the e2e login, write `.env` slot values (idempotent)                                       |
 | `bun slot:reset-e2e`                                          | Empty this checkout's e2e database back to the baseline and delete its e2e Redis keys                                                                                                    |
-| `bun slot:down` / `bun slot:prune`                            | Drop this worktree's databases and Redis keys / those of worktrees git no longer lists                                                                                                   |
+| `bun slot:down` / `bun slot:prune`                            | Drop this worktree's or clone's own databases and Redis keys / those of slots whose recorded checkout no longer exists                                                                   |
 | `bun db:reset`                                                | Recreate and re-migrate this checkout's dev or test database and re-provision the e2e login (`ALLOW_DATABASE_RESET=yes`)                                                                 |
 | `bun db:roles`                                                | Provision the test logins on a loopback `DATABASE_URL` (CI; `slot:up` and `db:reset` already do it)                                                                                      |
 | `bun infra:logs`                                              | Follow the shared stack's Compose logs                                                                                                                                                   |
@@ -122,16 +122,40 @@ Resend sender). With both set, Resend is always used.
 
 ## Parallel sessions on one machine
 
-Every checkout on the machine (the main checkout and each git worktree or
-`pu` slot) uses the same local stack: one Postgres on `15432`, one Redis on
-`6379`, Compose project `acme`. What separates sessions is the **slot**,
-which `bun slot:up` derives from the checkout folder
+Every checkout on the machine (the main checkout, each git worktree or
+`pu` slot, and any standalone clone) uses the same local stack: one
+Postgres on `15432`, one Redis on `6379`, Compose project `acme`. What
+separates sessions is the **slot**, which `bun slot:up` derives from the
+checkout and records as owned by it
 ([ADR 0034](../decisions/0034-shared-stack-slots.md)):
 
 | Checkout                      | Databases                                                           | Redis namespaces                           | Ports (app, e2e)               | Realtime (dev, e2e)            |
 | ----------------------------- | ------------------------------------------------------------------- | ------------------------------------------ | ------------------------------ | ------------------------------ |
 | Main checkout                 | `acme`, `acme_test`, `acme_e2e`                                     | `acme`, `acme-e2e`                         | 3000, 3100                     | 3011, 3103                     |
 | Worktree folder `wt-3ctbm0tw` | `acme_wt_3ctbm0tw`, `acme_wt_3ctbm0tw_test`, `acme_wt_3ctbm0tw_e2e` | `acme-wt-3ctbm0tw`, `acme-wt-3ctbm0tw-e2e` | 13000+10n, 13001+10n (block n) | 13005+10n, 13004+10n (block n) |
+| Standalone clone elsewhere    | `acme_wt_clone_<hash>`, `…_test`, `…_e2e`                           | `acme-wt-clone-<hash>`, `…-e2e`            | 13000+10n, 13001+10n (block n) | 13005+10n, 13004+10n (block n) |
+
+**Who is the main checkout.** Git cannot tell the main checkout from a
+`git clone` of the same repository in another folder: both are their
+repository's main worktree. So the main database's comment records the
+absolute path of the checkout that first claimed the main slot, and only
+that checkout gets it. A standalone clone anywhere else (a reviewer's
+scratch clone for a negative control, say) gets a clone slot of its own,
+`clone_<8 hex>` from a hash of its path, with its own port block, and is
+never given the main slot's databases, namespaces or ports. Each worktree
+and clone slot records its owner the same way, beside its port block.
+
+- The first `bun slot:up` on a fresh stack, from a repository's main
+  checkout, claims the main slot.
+- If `slot:up` says the main slot records no owner (it was set up before
+  ownership records) or that its recorded checkout no longer exists (the
+  main checkout was moved), run `bun slot:up --claim-main` once **in the
+  main checkout**, never in a scratch clone. It never takes the main slot
+  from a recorded checkout that still exists.
+- A moved clone gets a new clone slot; its old one goes on the next prune.
+- A worktree whose folder derives a slot already recorded for another live
+  checkout (two repositories' worktrees named `feat-x`) is refused: rename
+  the folder.
 
 ### Running beside another project
 
@@ -151,8 +175,11 @@ run `bun slot:up`. It is idempotent:
 
 - starts the shared stack (`docker compose up -d --wait`) only when it is
   unreachable, so it never recreates a running stack;
-- prunes orphans: the databases and Redis keys of worktrees that
-  `git worktree list` no longer shows;
+- prunes orphans: the databases and Redis keys of slots whose recorded
+  checkout no longer exists on disk. A slot of a live checkout is never
+  pruned, however unfamiliar it is to this checkout; slots set up before
+  ownership records are pruned only from the main checkout's repository,
+  when its `git worktree list` no longer shows them;
 - creates this checkout's dev, test and e2e databases if missing, migrates
   all three with this branch's migrations, and provisions the loopback-only
   `acme_e2e` login as a member of the baseline's `acme_web` runtime role
@@ -173,10 +200,14 @@ Rules that keep sessions safe:
 - Never hand-edit slot values. `bun doctor` fails when `.env` names another
   slot's database or namespace (typically a `.env` copied from the main
   checkout without `bun slot:up`) and warns about orphaned slots.
-- `bun slot:down` drops a worktree's databases and Redis keys; run it at
-  handoff when no reviewer needs the data. It refuses the main checkout.
-  `bun slot:prune` removes every orphaned slot; removing a worktree without
-  either leaves its data only until the next `slot:up` anywhere.
+- `bun slot:down` drops this worktree's or clone's own databases and Redis
+  keys; run it at handoff when no reviewer needs the data, and in a scratch
+  clone before deleting it. It refuses the main checkout and a slot recorded
+  for another live checkout. `bun slot:prune` removes every orphaned slot;
+  removing a worktree or clone without either leaves its data only until the
+  next `slot:up` anywhere. `bun db:reset` and `bun slot:reset-e2e` decide
+  the slot the same way, so a clone whose `.env` still names the main
+  databases is refused rather than resetting them.
 - Never stop, recreate or reconfigure the shared stack while other
   checkouts use it; there is deliberately no `infra:down`.
 - The browser suite uses four consecutive ports from `E2E_PORT`: the
