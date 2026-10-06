@@ -1,7 +1,13 @@
 import * as playwright from '@playwright/test';
 import type { BrowserContext, Page } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
-import { boundedStep, STEP_LIMIT_MS, StepTimeoutError } from './bounded-step';
+import {
+  boundedStep,
+  PAGE_FIXTURE_TIMEOUT_MS,
+  PAGE_START_LIMIT_MS,
+  STEP_LIMIT_MS,
+  StepTimeoutError,
+} from './bounded-step';
 import {
   protocolLog,
   recordProtocol,
@@ -125,15 +131,22 @@ export const test = playwright.test.extend<{ protocolLog: void }>({
     },
     { auto: true },
   ],
-  page: async ({ context, protocolLog: _recording }, provide, testInfo) => {
-    const page = await openPage(context, 'the test page (fixture setup)');
-    await provide(page);
-    if (testInfo.status !== testInfo.expectedStatus)
-      await writeFile(
-        testInfo.outputPath('browser-diagnostics.log'),
-        `${lines.join('\n')}\n`,
-      );
-  },
+  // The test's own page includes the context's cold start: it gets
+  // PAGE_START_LIMIT_MS and a fixture timeout of its own (bounded-step.ts).
+  page: [
+    async ({ context, protocolLog: _recording }, provide, testInfo) => {
+      const page = await openPage(context, 'the test page (fixture setup)', {
+        limitMs: PAGE_START_LIMIT_MS,
+      });
+      await provide(page);
+      if (testInfo.status !== testInfo.expectedStatus)
+        await writeFile(
+          testInfo.outputPath('browser-diagnostics.log'),
+          `${lines.join('\n')}\n`,
+        );
+    },
+    { scope: 'test', timeout: PAGE_FIXTURE_TIMEOUT_MS },
+  ],
 });
 
 export { expect } from '@playwright/test';

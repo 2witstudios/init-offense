@@ -372,9 +372,17 @@ Every spec imports `test` from `apps/web/e2e/support/fixtures.ts`, and every
 page, the test's own and any second device or tab, opens through its
 `openPage(context, purpose)`. ESLint rejects Playwright's own `test` (by
 name, namespace, default, re-export or dynamic import) and any direct
-`newPage` outside that module. `openPage` bounds page creation at 15 s, so a
-browser that never answers fails by name instead of as a bare 30 s test
-timeout. Before it throws, it writes `stall-evidence.log` to the test's
+`newPage` outside that module. `openPage` bounds page creation at 15 s
+(`STEP_LIMIT_MS`), so a browser that never answers fails by name instead of
+as a bare 30 s test timeout. The test's own page (the `page` fixture) is the
+one exception: it includes the browser context's cold start, which once took
+WebKit past 15 s on a cold CI runner and passed on re-run, so it gets
+`PAGE_START_LIMIT_MS` (30 s) and a fixture timeout of its own
+(`PAGE_FIXTURE_TIMEOUT_MS`) outside the 30 s test budget, so it still fails
+by name with its evidence. That is a budget for a step that legitimately
+does more, not a retry: retries stay off. A second device or tab opened
+inside a test keeps 15 s, and so does every other bounded step;
+`scripts/e2e-step-limits.test.ts` pins these values. Before it throws, it writes `stall-evidence.log` to the test's
 output folder within a 3 s budget (a process listing or log read that does
 not finish in time is cut and says so), naming the layer that
 stopped:
