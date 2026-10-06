@@ -183,6 +183,13 @@ describe('the Agent role and key', () => {
     assert({
       given: 'the mint command',
       should:
+        "pass --yes so a re-mint overwrites the CLI's stored copy of the same-named key, and never --all-drives",
+      actual: [mint?.includes('--yes'), mint?.includes('--all-drives')],
+      expected: [true, false],
+    });
+    assert({
+      given: 'the mint command',
+      should:
         'run as a consent flow, so only its approval lines reach the user',
       actual: fake.commands.find((c) => c.command[1] === 'keys')?.consent,
       expected: true,

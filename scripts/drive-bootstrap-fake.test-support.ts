@@ -60,6 +60,8 @@ export function fakeDrive(options: { failOnCall?: number } = {}) {
   }[] = [];
   /** The role the minted PAGESPACE_TOKEN holds: a custom role id or 'member'. */
   const key: { role: string | null } = { role: null };
+  /** Key names the CLI's local credential store holds. */
+  const storedKeys = new Set<string>();
   const calls: Call[] = [];
   const logs: string[] = [];
   const commands: {
@@ -309,6 +311,12 @@ export function fakeDrive(options: { failOnCall?: number } = {}) {
     run: async (command, opts) => {
       commands.push({ command, stdin: opts?.stdin, consent: opts?.consent });
       if (command[1] !== 'keys') return { code: 0, stdout: '' };
+      // As `pagespace keys create` does: the minted credential is stored
+      // locally under its name, and an existing name is refused without --yes.
+      const name = command[command.indexOf('--name') + 1] ?? '';
+      if (storedKeys.has(name) && !command.includes('--yes'))
+        return { code: 1, stdout: '' };
+      storedKeys.add(name);
       key.role = command[command.indexOf('--role') + 1] ?? null;
       return { code: 0, stdout: 'PAGESPACE_TOKEN=mcp_fakeTokenDoNotPrint\n' };
     },
