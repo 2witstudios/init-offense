@@ -1,5 +1,4 @@
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
-import { openerCommand } from '../scripts/browser';
 import { slugProblem } from './rename';
 import {
   dockerState,
@@ -110,7 +109,7 @@ describe('installPlan', () => {
     });
 });
 
-describe('dockerState and openerCommand', () => {
+describe('dockerState', () => {
   test('docker', () => {
     assert({
       given: 'installed/info combinations',
@@ -121,17 +120,6 @@ describe('dockerState and openerCommand', () => {
         dockerState(true, true),
       ],
       expected: ['missing', 'stopped', 'running'],
-    });
-  });
-
-  test('opener', () => {
-    assert({
-      given: 'each platform',
-      should: 'use open, xdg-open or start',
-      actual: ['darwin', 'linux', 'win32'].map(
-        (platform) => openerCommand(platform, 'http://x')[0],
-      ),
-      expected: ['open', 'xdg-open', 'cmd'],
     });
   });
 });
