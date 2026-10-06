@@ -222,3 +222,58 @@ describe('driveProvisioned', () => {
     });
   });
 });
+
+describe('planReview', () => {
+  test('defaults to the codex runner when the block is absent', () => {
+    assert({
+      given: 'a config without a planReview block',
+      should: 'review plans with codex and its configured default model',
+      actual: provisionedConfig().planReview,
+      expected: { runner: 'codex' },
+    });
+  });
+
+  test('keeps a configured runner, model and effort', () => {
+    assert({
+      given: 'a planReview block naming claude with a model and an effort',
+      should: 'keep all three',
+      actual: parseProjectConfig({
+        ...raw(),
+        planReview: { runner: 'claude', model: 'opus', effort: 'high' },
+      }).planReview,
+      expected: { runner: 'claude', model: 'opus', effort: 'high' },
+    });
+  });
+
+  test('fails closed on an unknown runner, a blank model or a bad effort', () => {
+    const json = raw();
+    assert({
+      given: 'malformed planReview blocks',
+      should: 'refuse with the field path',
+      actual: [
+        thrown(() => parseProjectConfig({ ...json, planReview: 'codex' })),
+        thrown(() =>
+          parseProjectConfig({ ...json, planReview: { runner: 'gemini' } }),
+        ),
+        thrown(() =>
+          parseProjectConfig({
+            ...json,
+            planReview: { runner: 'codex', model: ' ' },
+          }),
+        ),
+        thrown(() =>
+          parseProjectConfig({
+            ...json,
+            planReview: { runner: 'codex', effort: 'HIGH; rm' },
+          }),
+        ),
+      ],
+      expected: [
+        'project.config.json: planReview must be an object',
+        'project.config.json: planReview.runner must be one of codex, claude, opencode',
+        'project.config.json: planReview.model must be a non-empty string',
+        'project.config.json: planReview.effort must match /^[a-z]+$/',
+      ],
+    });
+  });
+});

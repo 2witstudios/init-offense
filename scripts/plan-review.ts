@@ -1,14 +1,37 @@
 #!/usr/bin/env bun
 /**
- * `bun plan:review <planPageId>`: the automated external plan
- * review of the epic pipeline. Codex reads the plan with AGENTS.md and the
- * accepted ADRs in hand, before any tasking, so a plan that contradicts a
- * decision (a backfill under ADR 0023, UUIDs under ADR 0018) is caught
- * before builders fan out. Prints the review; the epic-pipeline skill
- * publishes it and stops for owner approval.
+ * `bun plan:review <planPageId> | --plan-file <path> [--runner r]
+ * [--model m] [--effort e]`: the automated external plan review of the epic
+ * pipeline. A read-only reviewer CLI (Codex, Claude Code or OpenCode; see
+ * plan-reviewer.ts and project.config.json `planReview`) reads the plan with
+ * AGENTS.md and the accepted ADRs in hand, before any tasking, so a plan
+ * that contradicts a decision (a backfill under ADR 0023, UUIDs under ADR
+ * 0018) is caught before builders fan out. Prints the review; the
+ * epic-pipeline skill publishes it and stops for owner approval.
  */
-import { readdirSync, readFileSync, rmSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import {
+  envLayer,
+  parsePlanReviewArgs,
+  PLAN_REVIEW_USAGE,
+  resolveReviewer,
+  reviewerCommand,
+  reviewFailure,
+  stripAnsi,
+  type PlanSource,
+  type ReviewerCommand,
+} from './plan-reviewer';
+import { loadProjectConfig, type PlanReviewConfig } from './project-config';
 
 type Adr = {
   readonly number: string;
@@ -96,40 +119,125 @@ export function parseVerdict(
   return verdict as 'APPROVE' | 'CHANGES REQUESTED' | undefined;
 }
 
+/** A throwaway copy of the tracked and unignored files (never `.env`). */
+function workspaceCopy(root: string): string {
+  const copy = mkdtempSync(join(tmpdir(), 'plan-review-'));
+  const listed = Bun.spawnSync(
+    ['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+    { cwd: root, stdout: 'pipe', stderr: 'inherit' },
+  );
+  for (const file of listed.stdout.toString().split('\0')) {
+    if (file === '' || !existsSync(join(root, file))) continue;
+    mkdirSync(dirname(join(copy, file)), { recursive: true });
+    copyFileSync(join(root, file), join(copy, file));
+  }
+  return copy;
+}
+
+type RunResult = { readonly stderr: string } & (
+  { readonly review: string } | { readonly reason: string }
+);
+
+/** Runs one reviewer with the prompt on stdin; never touches the checkout. */
+function runReviewer(
+  command: ReviewerCommand,
+  prompt: string,
+  root: string,
+  out: string,
+): RunResult {
+  const [bin] = command.argv;
+  if (Bun.which(bin) === null)
+    return { reason: `${bin} is not installed (not on PATH)`, stderr: '' };
+  const cwd = command.workspace === 'copy' ? workspaceCopy(root) : root;
+  try {
+    const run = Bun.spawnSync([...command.argv], {
+      cwd,
+      env: { ...process.env, ...command.env },
+      stdin: Buffer.from(prompt),
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const stderr = run.stderr.toString();
+    if (run.exitCode !== 0)
+      return { reason: `exited with code ${run.exitCode}`, stderr };
+    const fromFile = existsSync(out) ? readFileSync(out, 'utf8') : '';
+    const review = command.output === 'file' ? fromFile : run.stdout.toString();
+    return { review: stripAnsi(review), stderr };
+  } finally {
+    rmSync(out, { force: true });
+    if (cwd !== root) rmSync(cwd, { recursive: true, force: true });
+  }
+}
+
+function readPlan(source: PlanSource): string {
+  if (source.kind === 'file') return readFileSync(source.path, 'utf8');
+  const plan = Bun.spawnSync(
+    ['pagespace', 'pages', 'read', source.id, '--json'],
+    { stdout: 'pipe', stderr: 'inherit' },
+  );
+  if (plan.exitCode !== 0) process.exit(1);
+  return (
+    (JSON.parse(plan.stdout.toString()) as { content?: string }).content ?? ''
+  );
+}
+
+function reviewerFromEnvironment(
+  root: string,
+  flags: Parameters<typeof resolveReviewer>[0]['flags'],
+): PlanReviewConfig {
+  try {
+    return resolveReviewer({
+      flags,
+      env: envLayer(process.env),
+      config: loadProjectConfig(root).planReview,
+    });
+  } catch (error) {
+    process.stderr.write(`${(error as Error).message}\n${PLAN_REVIEW_USAGE}\n`);
+    return process.exit(2);
+  }
+}
+
 if (import.meta.main) {
   const root = resolve(import.meta.dir, '..');
-  const [planId] = process.argv.slice(2);
-  if (!planId || !/^[a-z0-9]{20,32}$/.test(planId)) {
-    process.stderr.write('usage: bun plan:review <planPageId>\n');
+  const args = parsePlanReviewArgs(process.argv.slice(2));
+  if ('error' in args) {
+    process.stderr.write(`${args.error}\n${PLAN_REVIEW_USAGE}\n`);
     process.exit(2);
   }
-  const plan = Bun.spawnSync(['pagespace', 'pages', 'read', planId, '--json'], {
-    stdout: 'pipe',
-    stderr: 'inherit',
-  });
-  if (plan.exitCode !== 0) process.exit(1);
+  const reviewer = reviewerFromEnvironment(root, args);
   const decisions = join(root, 'docs/decisions');
   const prompt = planReviewPrompt({
     agents: readFileSync(join(root, 'AGENTS.md'), 'utf8'),
     adrs: adrIndex(
       readdirSync(decisions).map((file) => adrFile(decisions, file)),
     ),
-    plan:
-      (JSON.parse(plan.stdout.toString()) as { content?: string }).content ??
-      '',
+    plan: readPlan(args.source),
   });
-  const out = join(
-    process.env.TMPDIR ?? '/tmp',
-    `plan-review-${planId}-${process.pid}.md`,
+  const out = join(tmpdir(), `plan-review-${process.pid}.md`);
+  const command = reviewerCommand(reviewer, { root, out });
+  process.stderr.write(
+    `plan review: running ${reviewer.runner} (model ${reviewer.model ?? 'default'})\n`,
   );
-  const codex = Bun.spawnSync(
-    ['codex', 'exec', '--sandbox', 'read-only', '--cd', root, '-o', out, '-'],
-    { stdin: Buffer.from(prompt), stdout: 'ignore', stderr: 'inherit' },
+  const result = runReviewer(command, prompt, root, out);
+  const review = 'review' in result ? result.review : '';
+  process.stdout.write(
+    review === '' || review.endsWith('\n') ? review : `${review}\n`,
   );
-  const review = codex.exitCode === 0 ? readFileSync(out, 'utf8') : '';
-  rmSync(out, { force: true });
-  process.stdout.write(review);
   const verdict = parseVerdict(review);
+  if (!verdict)
+    process.stderr.write(
+      `${reviewFailure({
+        reviewer,
+        command: command.argv,
+        reason:
+          'reason' in result
+            ? result.reason
+            : 'produced no "PLAN REVIEW: APPROVE" or "PLAN REVIEW: CHANGES REQUESTED" line',
+        stderr: result.stderr,
+        prompt,
+        source: args.source,
+      })}\n`,
+    );
   process.stderr.write(
     `plan review: ${verdict ?? 'NO VERDICT (treat as not reviewed)'}\n`,
   );

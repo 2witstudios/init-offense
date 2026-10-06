@@ -68,6 +68,22 @@ describe('newProjectConfig', () => {
       },
     });
   });
+
+  test("keeps the template's plan reviewer", () => {
+    assert({
+      given: 'a template config with a planReview block',
+      should: 'carry the reviewer settings into the new project unchanged',
+      actual: newProjectConfig(
+        {
+          version: 1,
+          planReview: { runner: 'claude', model: 'opus' },
+          pagespace: { pages: {}, channels: {}, agents: {} },
+        },
+        options(),
+      ).planReview,
+      expected: { runner: 'claude', model: 'opus' },
+    });
+  });
 });
 
 const listTree = (root: string, dir = root): string[] =>

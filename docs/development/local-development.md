@@ -61,7 +61,7 @@ handler logic yet beyond rejecting every connection.
 | `bun board:read` / `status` / `create` / `relate` / `replace` | PageSpace board operations: raw reads, task status (never Done for agents), leaves and ISSUE-n, Related pages, hash-guarded replaces (`board:hash`)                                      |
 | `bun board:stale [--apply]`                                   | List tasks whose status disagrees with git; `--apply` moves them to their pre-Done status                                                                                                |
 | `bun decision:record`                                         | Record a decision made on the owner's behalf on Pending decisions and notify the owner                                                                                                   |
-| `bun plan:review <plan>`                                      | Automated Codex review of a plan against AGENTS.md and the ADRs, before tasking                                                                                                          |
+| `bun plan:review <plan> [--runner r] [--model m]`             | Read-only plan review against AGENTS.md and the ADRs by `codex`, `claude` or `opencode` (`planReview` in project.config.json); `--plan-file <path>` reviews a local file                 |
 
 ## Environment
 

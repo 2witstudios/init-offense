@@ -245,7 +245,10 @@ ruleset it reports "ready for owner merge" to its parent and waits.
 - A decision made on the owner's behalf is recorded with
   `bun decision:record`; it stays open until confirmed or overruled.
 - Plans get an independent automated review with `bun plan:review` before
-  the owner approves them.
+  the owner approves them. The read-only reviewer (`codex`, `claude` or
+  `opencode`) comes from `planReview` in `project.config.json`; override it
+  per run with `--runner` and `--model` (or `PLAN_REVIEW_RUNNER` /
+  `PLAN_REVIEW_MODEL`).
 - Board plumbing is committed: `bun board:read|status|create|relate|replace`
   and `bun board:stale`. Hand off with the `/handoff` skill.
 

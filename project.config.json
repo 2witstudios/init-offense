@@ -9,6 +9,7 @@
     "integrationCommand": "bun test:integration",
     "requiredChecks": ["CI gate", "Playwright E2E"]
   },
+  "planReview": { "runner": "codex" },
   "pagespace": {
     "apiUrl": "https://pagespace.ai",
     "driveName": "Acme",

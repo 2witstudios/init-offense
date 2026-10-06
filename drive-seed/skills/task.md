@@ -123,7 +123,7 @@ draftPlan() {
 
 reviewPlan() {
 
-1. Run an independent read-only reviewer: `bun plan:review <planPageId>` when present; otherwise a fresh subagent given only AGENTS.md, the ADR index, this skill's Plan and deriveTimeline sections and the plan page. It checks scope, leaf sizing, testable criteria, missing prerequisites, cycles, single-writer conflicts, and that the Timeline is exactly what deriveTimeline produces. Verdict: APPROVE | CHANGES REQUESTED.
+1. Run an independent read-only reviewer: `bun plan:review <planPageId>` when present (on NO VERDICT, rerun with another reviewer, e.g. `--runner claude` or `--runner codex --model <model>`, before falling back); otherwise a fresh subagent given only AGENTS.md, the ADR index, this skill's Plan and deriveTimeline sections and the plan page. It checks scope, leaf sizing, testable criteria, missing prerequisites, cycles, single-writer conflicts, and that the Timeline is exactly what deriveTimeline produces. Verdict: APPROVE | CHANGES REQUESTED.
 2. Publish it as `Plan review — <Epic> (<reviewer>)` in `Reviews/<Epic>`, mentioning the plan.
 3. CHANGES REQUESTED => revise (Manifest first, then regenerate the Timeline), add a dated Revision entry, review again. Take a disagreement to the owner only when it is theirs to decide (scope or intent), never because of a round count.
 4. Set `Planning: 2 — reviewed`.

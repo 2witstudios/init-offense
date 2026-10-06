@@ -28,8 +28,9 @@ Stages {
    Declare prerequisites (ADR, contract, leaf, PR) explicitly; leaves that depend on them are sequenced, not parallel.
 
 2. Automated external plan review
-   `bun plan:review <planPageId> > <scratchpad>/plan-review-<epic-slug>.md` runs Codex read-only with AGENTS.md and the ADR index.
-   Publish its output as `Plan review — <epic> (codex)` in Reviews/<Epic>, mentioning the plan.
+   `bun plan:review <planPageId> > <scratchpad>/plan-review-<epic-slug>.md` runs the configured reviewer (project.config.json `planReview`: `codex`, `claude` or `opencode`) read-only with AGENTS.md and the ADR index.
+   NO VERDICT means not reviewed: its stderr names the runner, the model and the error. Rerun with another runner or model (`bun plan:review <planPageId> --runner claude`, `--runner codex --model <model>`); never substitute an ad-hoc review.
+   Publish its output as `Plan review — <epic> (<runner>)` in Reviews/<Epic>, mentioning the plan.
    CHANGES REQUESTED => revise the plan and review again until the review approves. Take a disagreement to the owner only when it is a decision only the owner can make (scope or intent), never because of a round count.
 
 3. Owner approval (the one stop)

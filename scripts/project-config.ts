@@ -49,6 +49,17 @@ export const AGENT_KEYS = [
   'documentation',
 ] as const;
 
+/** The CLIs `bun plan:review` can drive as the independent plan reviewer. */
+export const PLAN_REVIEW_RUNNERS = ['codex', 'claude', 'opencode'] as const;
+export type PlanReviewRunner = (typeof PLAN_REVIEW_RUNNERS)[number];
+
+/** Which reviewer `bun plan:review` runs; model and effort default to the CLI's own. */
+export type PlanReviewConfig = {
+  readonly runner: PlanReviewRunner;
+  readonly model?: string;
+  readonly effort?: string;
+};
+
 export type PageKey = (typeof PAGE_KEYS)[number];
 export type ChannelKey = (typeof CHANNEL_KEYS)[number];
 export type AgentKey = (typeof AGENT_KEYS)[number];
@@ -73,6 +84,7 @@ export type ProjectConfig = {
     readonly channels: IdMap<ChannelKey>;
     readonly agents: IdMap<AgentKey>;
   };
+  readonly planReview: PlanReviewConfig;
 };
 
 const SLUG = /^[a-z][a-z0-9-]{0,38}$/;
@@ -80,6 +92,10 @@ const REPO = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
 const ENV_NAME = /^[A-Z][A-Z0-9_]*$/;
 // PageSpace ids are cuid2: 24 lowercase alphanumerics.
 const PAGESPACE_ID = /^[a-z0-9]{24}$/;
+
+// A model or effort reaches a CLI as an argument value: no spaces, no leading dash.
+export const PLAN_REVIEW_MODEL = /^[A-Za-z0-9][A-Za-z0-9._:/#@-]*$/;
+export const PLAN_REVIEW_EFFORT = /^[a-z]+$/;
 
 const fail = (path: string, problem: string): never => {
   throw new Error(`project.config.json: ${path} ${problem}`);
@@ -107,6 +123,40 @@ const idMap = <K extends string>(
   return Object.fromEntries(
     keys.map((key) => [key, optionalId(value[key] ?? null, `${path}.${key}`)]),
   ) as IdMap<K>;
+};
+
+const optionalText = (
+  value: unknown,
+  path: string,
+  pattern: RegExp,
+): string | undefined =>
+  value === undefined ? undefined : text(value, path, pattern);
+
+export const isPlanReviewRunner = (value: unknown): value is PlanReviewRunner =>
+  PLAN_REVIEW_RUNNERS.includes(value as PlanReviewRunner);
+
+export const PLAN_REVIEW_RUNNER_RULE = `must be one of ${PLAN_REVIEW_RUNNERS.join(', ')}`;
+
+const planReview = (value: unknown): PlanReviewConfig => {
+  if (value === undefined) return { runner: 'codex' };
+  if (!isRecord(value)) return fail('planReview', 'must be an object');
+  const model = optionalText(
+    value.model,
+    'planReview.model',
+    PLAN_REVIEW_MODEL,
+  );
+  const effort = optionalText(
+    value.effort,
+    'planReview.effort',
+    PLAN_REVIEW_EFFORT,
+  );
+  return {
+    runner: isPlanReviewRunner(value.runner)
+      ? value.runner
+      : fail('planReview.runner', PLAN_REVIEW_RUNNER_RULE),
+    ...(model !== undefined && { model }),
+    ...(effort !== undefined && { effort }),
+  };
 };
 
 /** Validates parsed JSON into a config, failing closed on any malformed field. */
@@ -147,6 +197,7 @@ export function parseProjectConfig(raw: unknown): ProjectConfig {
       channels: idMap(pagespace.channels, CHANNEL_KEYS, 'pagespace.channels'),
       agents: idMap(pagespace.agents, AGENT_KEYS, 'pagespace.agents'),
     },
+    planReview: planReview(raw.planReview),
   };
 }
 
