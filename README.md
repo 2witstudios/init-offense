@@ -1,5 +1,7 @@
 # Acme
 
+**Docs:** [init-offense.pagespace.site](https://init-offense.pagespace.site/) — getting started, the agent workflow and the command reference.
+
 Acme is generated from **init-offense**, a project template that starts a
 new product with the boring, hard parts already done and verified:
 

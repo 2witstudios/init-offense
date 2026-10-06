@@ -222,8 +222,9 @@ function driveSettings(manifest: Manifest, state: ExistingState): Action[] {
   const actions: Action[] = [];
   if (!state.drive?.drivePrompt?.trim())
     actions.push({ kind: 'setDriveContext', file: manifest.driveContext });
-  const home = state.nodes[manifest.homePage];
-  if (!home || state.drive?.homePageId !== home.id)
+  // The roadmap is only the default landing page: a drive whose owner chose
+  // another home (a published docs site, say) keeps it on every rerun.
+  if (!state.drive?.homePageId)
     actions.push({ kind: 'setHomePage', ref: manifest.homePage });
   return actions;
 }

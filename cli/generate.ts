@@ -3,7 +3,8 @@
  * `--without` modules, write project.config.json and report leftovers.
  * Runs no external commands.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { renderAgentsDrive } from '../scripts/drive-bootstrap-render';
 import { join, resolve } from 'node:path';
 import type { Options } from './args';
 import { copyTemplate, templateFiles } from './copy';
@@ -87,6 +88,18 @@ export function generateTree(
     const path = join(options.target, file);
     writeFileSync(path, stripTemplateWiring(file, readFileSync(path, 'utf8')));
   }
+  // The template's own drive is not the new project's: AGENTS.md starts
+  // unprovisioned until its own `bun drive:bootstrap` renders the line.
+  const agents = join(options.target, 'AGENTS.md');
+  if (existsSync(agents))
+    writeFileSync(
+      agents,
+      renderAgentsDrive(readFileSync(agents, 'utf8'), {
+        driveName: options.display,
+        driveId: null,
+        conventionsId: null,
+      }).text,
+    );
   const rename = (path: string) => renamePath(path, names);
   const files = kept.map(rename);
   const removedFiles = removed.map(rename);

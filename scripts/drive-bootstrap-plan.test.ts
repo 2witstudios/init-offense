@@ -359,3 +359,31 @@ describe('parseManifest', () => {
     });
   });
 });
+
+describe('drive home page', () => {
+  test('an owner-chosen home page survives a rerun', () => {
+    const elsewhere: ExistingState = {
+      ...provisioned,
+      drive: { ...provisioned.drive!, homePageId: 'site00000000000000000000' },
+    };
+    const homeless: ExistingState = {
+      ...provisioned,
+      drive: { ...provisioned.drive!, homePageId: null },
+    };
+    assert({
+      given:
+        'a provisioned drive whose home is another page, then one with no home',
+      should:
+        'leave the chosen home alone, and set the roadmap only when there is none',
+      actual: [
+        kinds(
+          planBootstrap(provisionedConfig, manifest, elsewhere, options),
+        ).includes('setHomePage'),
+        kinds(
+          planBootstrap(provisionedConfig, manifest, homeless, options),
+        ).includes('setHomePage'),
+      ],
+      expected: [false, true],
+    });
+  });
+});

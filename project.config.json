@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "name": "acme",
-  "displayName": "Acme",
+  "name": "init-offense",
+  "displayName": "init-offense",
   "repo": "2witstudios/acme",
   "owner": "2witstudios",
   "autonomyEnv": "AGENT_AUTONOMOUS",
@@ -9,49 +9,51 @@
     "integrationCommand": "bun test:integration",
     "requiredChecks": ["CI gate", "Playwright E2E"]
   },
-  "planReview": { "runner": "codex" },
+  "planReview": {
+    "runner": "codex"
+  },
   "pagespace": {
     "apiUrl": "https://pagespace.ai",
-    "driveName": "Acme",
-    "driveId": null,
+    "driveName": "init-offense",
+    "driveId": "j5rqt7l7ze1kg8gigt4xg2iq",
     "pages": {
-      "roadmap": null,
-      "conventions": null,
-      "issues": null,
-      "bugs": null,
-      "testCoverage": null,
-      "agentTooling": null,
-      "docDrift": null,
-      "userFeedback": null,
-      "backlog": null,
-      "pendingDecisions": null,
-      "plans": null,
-      "prompts": null,
-      "reviews": null,
-      "library": null,
-      "builderContract": null,
-      "reviewerContract": null,
-      "orchestratorLoop": null,
-      "convergeLoop": null,
-      "agentMemory": null,
-      "agents": null,
-      "documentation": null,
-      "docsRunsSheet": null,
-      "technicalDocs": null,
-      "userDocs": null,
-      "blog": null
+      "roadmap": "azt08lqfikpcib6bwqbvkf43",
+      "conventions": "hdrmk39nj0smubsi7regdbza",
+      "issues": "fk5upfkf9m3fea456x6yy8dp",
+      "bugs": "baipc3c0firi3s2zbb49vsug",
+      "testCoverage": "qisceu9rmyzqjm17963bdjsp",
+      "agentTooling": "votwnj0msrqytoa3p8j5ua6v",
+      "docDrift": "dn896tvtyomcg00kclvkfq9m",
+      "userFeedback": "fju9fnlephwzmxinujtgbj16",
+      "backlog": "a7w27sjpb35le92cqy394x0n",
+      "pendingDecisions": "b3xywfpvab95n195szx7kpyt",
+      "plans": "rolfh73nd7sxyb9lo70gs5xn",
+      "prompts": "rf9juhpdypkwkdo3z3dbuq60",
+      "reviews": "b3zam99dnadjhlo1jj7gjw99",
+      "library": "g5gwawcug5ri82rt1hh936s9",
+      "builderContract": "reth8aaghqm5ukgjdd7lokhr",
+      "reviewerContract": "pfziif49txfauwmae6dokd4y",
+      "orchestratorLoop": "xix2tkr70usvs82v8lehqs3j",
+      "convergeLoop": "ic32p5up1z9j11kpmdo0drai",
+      "agentMemory": "ysfg0nhi1wlxu0vdluq1270j",
+      "agents": "zahkceg5rhgrps1n89xn146g",
+      "documentation": "jejscmch8rc4zulyrzpn2m93",
+      "docsRunsSheet": "brbzby5p0xjnmhex0p4ot5f1",
+      "technicalDocs": "q1rqw7j2cmtfo8ndzcllw3n6",
+      "userDocs": "f8clwya70oifpt1y6cy55kbo",
+      "blog": "muhv1jnasyq7rdmxj2w9idcc"
     },
     "channels": {
-      "standup": null,
-      "incidents": null,
-      "sprintRoom": null,
-      "epicUpdates": null
+      "standup": "l45lhoypo7x6vy8ot1eixahb",
+      "incidents": "iatrpzxir5qvks0n2s94fwaz",
+      "sprintRoom": "msqzlvm2741wudh5n3h781at",
+      "epicUpdates": "lq8l2jdfllt7nil492p2hgo7"
     },
     "agents": {
-      "scrumMaster": null,
-      "builder": null,
-      "reviewer": null,
-      "documentation": null
+      "scrumMaster": "m5502b81nkd8s9k6jqh0angm",
+      "builder": "z5yovyl4yg2ibnzykdegj7ci",
+      "reviewer": "u2j48dlqyyi4rr725yhwldv1",
+      "documentation": "atfa13npwc1koxbrzss3gxv8"
     }
   }
 }

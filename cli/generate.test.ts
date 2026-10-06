@@ -127,6 +127,20 @@ describe('generation from the real template', () => {
     });
   });
 
+  test('AGENTS.md starts unprovisioned', () => {
+    const agents = readFileSync(join(target, 'AGENTS.md'), 'utf8');
+    assert({
+      given: 'a template whose own AGENTS.md may name its own drive',
+      should:
+        "render the new project's drive line as not provisioned, naming no drive id",
+      actual: [
+        agents.includes('Drive: not provisioned yet'),
+        /Drive: "[^"]*" \(`[a-z0-9]{24}`\)/.test(agents),
+      ],
+      expected: [true, false],
+    });
+  });
+
   test('project.config.json', () => {
     const config = parseProjectConfig(
       JSON.parse(readFileSync(join(target, 'project.config.json'), 'utf8')),

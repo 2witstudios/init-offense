@@ -265,7 +265,7 @@ conventions page.
 
 <!-- drive:start -->
 
-Drive: not provisioned yet — run `bun drive:bootstrap`
+Drive: "init-offense" (`j5rqt7l7ze1kg8gigt4xg2iq`) · conventions page "Task artifacts and linking" (`hdrmk39nj0smubsi7regdbza`)
 <!-- drive:end -->
 
 Work only on committed tasks: claim `Ready` leaves, advance In Progress to
