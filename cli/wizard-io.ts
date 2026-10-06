@@ -9,6 +9,7 @@ import { delimiter, dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { openInBrowser } from '../scripts/browser';
 import { consentFilter } from '../scripts/pagespace-consent';
+import { isPortFree } from '../scripts/port-probe';
 import {
   WizardStop,
   type Captured,
@@ -185,21 +186,6 @@ const headlessPrompt: Prompt = {
   select: async (question) => noTerminal(question),
   pause: async (message) => noTerminal(message),
 };
-
-/** True when nothing listens on `port` on the loopback interface. */
-export function isPortFree(port: number): boolean {
-  try {
-    const listener = Bun.listen({
-      hostname: '127.0.0.1',
-      port,
-      socket: { data() {} },
-    });
-    listener.stop(true);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 async function reachable(url: string): Promise<boolean> {
   try {

@@ -40,6 +40,7 @@ import { dropAllTestRunDatabases } from '@acme/db/test-runs';
 import { deleteNamespace } from '@acme/redis/namespaces';
 import { readEnvValue, rewriteEnv, slotEnvValues } from './slot-env';
 import { e2eRole, serviceRefusal, type Slot } from './slot-model';
+import { isPortFree } from './port-probe';
 import { APP_PORT_ENV, pickPortBlock, portBlockPorts } from './slot-ports';
 import { parseSlotClaim, slotClaimComment } from './slot-ownership';
 import { STACK_PORT_ENV, withStackPorts } from './slot-naming';
@@ -71,20 +72,6 @@ async function prune(services: SlotServices, checkout: Checkout) {
       await deleteNamespace(client, namespace);
   return orphans;
 }
-
-const isPortFree = (port: number): boolean => {
-  try {
-    const listener = Bun.listen({
-      hostname: '127.0.0.1',
-      port,
-      socket: { data() {} },
-    });
-    listener.stop(true);
-    return true;
-  } catch {
-    return false;
-  }
-};
 
 /**
  * Records this checkout as the slot's owner on its dev database, with a
