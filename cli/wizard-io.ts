@@ -7,6 +7,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
+import { openInBrowser } from '../scripts/browser';
 import {
   WizardStop,
   type Captured,
@@ -16,7 +17,6 @@ import {
   type Runner,
   type WizardDeps,
 } from './wizard-deps';
-import { openerCommand, type Command } from './wizard-plan';
 
 const PROBE_TIMEOUT_MS = 20_000;
 
@@ -202,14 +202,7 @@ async function reachable(url: string): Promise<boolean> {
 }
 
 function open(url: string): void {
-  const [file = '', ...args] = openerCommand(process.platform, url) as Command;
-  try {
-    spawn(file, args, { stdio: 'ignore', detached: true })
-      .on('error', () => {})
-      .unref();
-  } catch {
-    // The URL is printed beside every open, so a missing opener costs nothing.
-  }
+  openInBrowser(url);
   say(`  (opened ${url})`);
 }
 

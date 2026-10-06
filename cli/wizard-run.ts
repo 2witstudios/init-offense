@@ -35,10 +35,14 @@ export function driveUrl(configText: string | null): string | null {
   }
 }
 
-const OPTIONAL_STEPS = [
+const optionalSteps = (accounts: Accounts, created: Created): string[] => [
   'Real email: add RESEND_API_KEY and AUTH_EMAIL_FROM to .env (until then sign-in links print in the terminal).',
   'Agents: create a GitHub machine user for autonomous agents and fill .env.agent from .env.agent.example.',
-  'Reviews: create the review-record GitHub App (docs/development/review-record.md).',
+  ...(accounts.github && !created.reviewGate
+    ? [
+        'Reviews: turn on the review gate with `bun github:review-app` (two clicks in your browser; docs/development/review-record.md).',
+      ]
+    : []),
   'Deploy: create the Fly apps (docs/operations/deploy-staging.md).',
 ];
 
@@ -60,6 +64,11 @@ function summary(
     ...(created.drive
       ? [`  • PageSpace drive ${drive ?? '(see project.config.json)'}`]
       : []),
+    ...(created.reviewGate
+      ? [
+          '  • Review gate: the review-record GitHub App, so only independently reviewed PRs merge',
+        ]
+      : []),
     ...(accounts.github
       ? privateOnFreeNote(
           `${accounts.owner}/${accounts.slug}`,
@@ -68,7 +77,9 @@ function summary(
         )
       : []),
     '\nOptional next steps, whenever you are ready:',
-    ...OPTIONAL_STEPS.map((line, index) => `  ${index + 1}. ${line}`),
+    ...optionalSteps(accounts, created).map(
+      (line, index) => `  ${index + 1}. ${line}`,
+    ),
   ];
 }
 

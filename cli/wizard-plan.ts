@@ -156,13 +156,6 @@ export function dockerStartCommands(platform: string): Command[] {
   ];
 }
 
-/** `open` / `xdg-open` / `start` for the platform. */
-export function openerCommand(platform: string, url: string): Command {
-  if (platform === 'darwin') return ['open', url];
-  if (platform === 'win32') return ['cmd', '/c', 'start', '', url];
-  return ['xdg-open', url];
-}
-
 export type DockerState = 'missing' | 'stopped' | 'running';
 
 /** `docker --version` says installed; only `docker info` proves it runs. */

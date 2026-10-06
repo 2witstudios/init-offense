@@ -34,8 +34,9 @@ and detailed procedures in the linked documents, not here.
 ## Starting a new project
 
 This repository is generated from the init-offense template. Creating a
-project, bootstrapping its PageSpace drive and the manual steps that remain
-(machine user, review-record GitHub App, Resend, Fly) are in the
+project, bootstrapping its PageSpace drive, setting up the review-record
+GitHub App (`bun github:review-app`) and the manual steps that remain
+(machine user, Resend, Fly) are in the
 [README](README.md#quickstart). Until `bun drive:bootstrap` has run, every
 PageSpace-backed command refuses with a "not provisioned" error rather than
 guessing an id.
