@@ -16,7 +16,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, openSync, closeSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { defaultDisplay } from './rename';
@@ -62,9 +62,17 @@ const selectStages = (
 const VERIFY_USAGE = `Usage: bun cli/verify-generated.ts <slug> [--display "Name"] [--dir <dir>] [--stages a,b] [--e2e] [--keep-going]`;
 
 /** Parses argv (without `bun cli/verify-generated.ts`). */
+/**
+ * Generated projects live under ~/.cache, never $TMPDIR: macOS purges
+ * files in $TMPDIR that look old, and Bun copies package files from its
+ * cache with their original timestamps, so an install there can lose files
+ * while a long run (or a sleeping machine) waits.
+ */
+const DEFAULT_SCRATCH = join(homedir(), '.cache', 'init-offense-verify');
+
 export function parseVerifyArgs(
   argv: readonly string[],
-  scratch: string = tmpdir(),
+  scratch: string = DEFAULT_SCRATCH,
 ): VerifyOptions | { readonly error: string } {
   let parsed;
   try {

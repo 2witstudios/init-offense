@@ -170,7 +170,7 @@ bun cli/verify-generated.ts northwind-logistics-portal --display "Northwind Logi
 bun cli/verify-generated.ts zed
 ```
 
-Each run deletes and regenerates `<dir>` (default `$TMPDIR/gen-<slug>`,
+Each run deletes and regenerates `<dir>` (default `~/.cache/init-offense-verify/gen-<slug>`, never `$TMPDIR`, which macOS purges of old-looking files mid-run;
 override with `--dir`), runs `format:check`, `lint`, `knip`,
 `duplication`, `invariants`, `evidence`, `typecheck`, `test`,
 `metrics:check` and `build` in order, writes each stage's output to
