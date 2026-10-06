@@ -139,7 +139,10 @@ write with. The built-in MEMBER role is view-only on pages it did not
 create, so a MEMBER key fails every board write. `bun drive:bootstrap
 --check` verifies the role and asks PageSpace whether the key can edit the
 Roadmap; when it cannot, rerunning `bun drive:bootstrap` mints a
-replacement (revoke the old key with `pagespace keys revoke`).
+replacement (revoke the old key with `pagespace keys revoke`). The check
+reads the drive with that same `.env` key, so it needs no unscoped key;
+what only an owner key can read is listed as not checked rather than
+failed.
 
 Unless `--no-github` is given, the wizard creates the repository and
 pushes `main`. With the review gate (`bun github:review-app`, offered by

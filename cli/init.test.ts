@@ -182,7 +182,8 @@ describe('main', () => {
       const { code, prettier, logs } = formatRun(1);
       assert({
         given: 'a tree that settles on the second prettier pass',
-        should: 'write twice, check twice quietly, print no failure and continue',
+        should:
+          'write twice, check twice quietly, print no failure and continue',
         actual: { code, prettier, failures: failureLines(logs) },
         expected: {
           code: 0,
@@ -208,14 +209,7 @@ describe('main', () => {
         },
         expected: {
           code: 1,
-          prettier: [
-            write,
-            quietCheck,
-            write,
-            quietCheck,
-            write,
-            finalCheck,
-          ],
+          prettier: [write, quietCheck, write, quietCheck, write, finalCheck],
           failures: ['  failed (exit 1): check formatting settled'],
           named: true,
         },
