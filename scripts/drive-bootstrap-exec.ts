@@ -171,10 +171,17 @@ async function mintKey(
   const config = parseProjectConfig(JSON.parse(run.configText));
   if (!run.agentRoleId)
     throw new Error(`The drive has no "${AGENT_ROLE.name}" role to mint with`);
+  // `pagespace keys create` stores every minted credential locally under its
+  // name and refuses a name it already holds unless given --yes. The script's
+  // copy of the token is `.env`, so a re-mint (a replaced key, or a rerun
+  // after a mint whose `.env` write failed) overwrites that local copy
+  // instead of failing. --yes gates nothing else here: it also confirms
+  // --all-drives, which a drive-scoped mint never passes.
   const command = [
     'pagespace',
     'keys',
     'create',
+    '--yes',
     '--drive',
     requireDrive(run),
     '--role',

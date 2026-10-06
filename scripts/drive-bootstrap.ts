@@ -33,7 +33,7 @@ import {
   type Transport,
 } from './drive-bootstrap-inspect';
 import { inspectBootstrap } from './drive-bootstrap-access';
-import { checkDrive } from './drive-bootstrap-check';
+import { checkDrive, failureLines } from './drive-bootstrap-check';
 import { executePlan } from './drive-bootstrap-exec';
 import {
   configuredId,
@@ -297,12 +297,8 @@ if (import.meta.main) {
   main(process.argv.slice(2), process.cwd(), process.env).then(
     (code) => process.exit(code),
     (error: unknown) => {
-      console.error(
-        `drive:bootstrap failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      console.error(
-        'Ids created so far are saved in project.config.json; rerun to resume.',
-      );
+      for (const line of failureLines(process.argv.slice(2), error))
+        console.error(line);
       process.exit(1);
     },
   );

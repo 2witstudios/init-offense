@@ -18,6 +18,7 @@ describe('copy exclusions', () => {
   test('keeps source and drops local state', () => {
     const paths = [
       'apps/web/src/app/page.tsx',
+      'tsconfig.json',
       'cli/init.ts',
       'create/bin/init-offense.js',
       'node_modules/x/index.js',
@@ -46,6 +47,7 @@ describe('copy exclusions', () => {
       actual: paths.filter((path) => !isExcluded(path)),
       expected: [
         'apps/web/src/app/page.tsx',
+        'tsconfig.json',
         '.env.example',
         '.env.agent.example',
         '.pu/config.yaml',

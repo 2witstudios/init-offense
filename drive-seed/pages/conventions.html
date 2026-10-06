@@ -25,7 +25,7 @@
 <h2>Who writes what</h2>
 <ul>
 <li>The orchestrator writes the task prompt page first, then spawns the agent with <code>pagespace pages read &lt;promptPageId&gt;</code>. A prompt changed mid-run is edited in place so history shows what the agent was told.</li>
-<li>Builders publish their handoff; reviewers publish their review record. Reviewers run in the builder's worktree and leave it clean.</li>
+<li>Builders publish their handoff; reviewers publish their review record. Reviewers review the exact head SHA, preferably in a separate worktree checked out at it (the builder's worktree is acceptable when it is at that SHA), and leave the tree they used clean.</li>
 <li>Every agent publishes its own artifact pages and keeps its own tasks current up to In Review. No agent edits the criteria or scope of a task delegated to it. A merged task moves to Merged automatically; Done is granted from an independent review record, never by the agent that did the work. Criteria, specs and scope change only with the owner's recorded approval.</li>
 <li>A decision an agent makes on the owner's behalf is recorded with <code>bun decision:record</code> in {{page:pendingDecisions}}; it stays open until the owner moves it to Confirmed or Overruled.</li>
 <li>Gate logs and traces stay with CI or the PR and are linked from the record. Secrets and env material are never uploaded.</li>

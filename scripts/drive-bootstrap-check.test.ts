@@ -1,6 +1,10 @@
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
-import { checkDrive, NO_CHECK_CREDENTIAL } from './drive-bootstrap-check';
-import { readOnly } from './drive-bootstrap-inspect';
+import {
+  checkDrive,
+  failureLines,
+  NO_CHECK_CREDENTIAL,
+} from './drive-bootstrap-check';
+import { HttpError, readOnly, type Transport } from './drive-bootstrap-inspect';
 import { paths } from './drive-bootstrap-fake.test-support';
 import {
   bootstrap,
@@ -87,6 +91,85 @@ describe('drive:bootstrap --check credentials', () => {
     });
   });
 
+  test('with only the drive key holding another editing role', async () => {
+    const fake = seeded();
+    await bootstrap(fake);
+    const driveId = fake.drives[0]?.id ?? '';
+    fake.roles.push({
+      id: 'rEditor0000000000000000',
+      driveId,
+      name: 'Editor',
+      driveWidePermissions: { canView: true, canEdit: true, canShare: false },
+    });
+    fake.key.role = 'rEditor0000000000000000';
+    assert({
+      given:
+        'a refused roles listing and a key that can edit the Roadmap but holds a custom "Editor" role',
+      should: 'fail the role check by the role name the key reports',
+      actual: await check(
+        fake,
+        { bootstrap: false, agentKey: true },
+        { rolesRefused: true },
+      ),
+      expected: {
+        code: 1,
+        report: [
+          'drive check FAILED:',
+          '  - PAGESPACE_TOKEN: does not hold the "Agent" role: rerun `bun drive:bootstrap` to mint a key with the Agent role, then revoke the old one (`pagespace keys list`, `pagespace keys revoke`)',
+          'not checked:',
+          '  - agentRole: the "Agent" role\'s drive-wide grants were not checked (listing roles needs an owner key: set PAGESPACE_BOOTSTRAP_TOKEN)',
+        ].join('\n'),
+      },
+    });
+  });
+
+  test('with a key PageSpace refuses', async () => {
+    const fake = seeded();
+    await bootstrap(fake);
+    const refused: Transport = {
+      ...readOnly(fake.transport),
+      api: () =>
+        Promise.reject(
+          new HttpError(
+            401,
+            'PageSpace GET /api/drives → 401: Invalid MCP token',
+          ),
+        ),
+    };
+    const envText = fake.files.get(paths.env) ?? '';
+    assert({
+      given: 'only a bogus .env PAGESPACE_TOKEN',
+      should:
+        'fail as a credential error that names PAGESPACE_TOKEN and how to replace it',
+      actual: await checkDrive(configOf(fake), manifest, envText, {
+        bootstrap: null,
+        agentKey: refused,
+      }),
+      expected: {
+        code: 2,
+        report:
+          "drive:bootstrap --check: PageSpace refused .env's PAGESPACE_TOKEN (PageSpace GET /api/drives → 401: Invalid MCP token). " +
+          'Check PAGESPACE_TOKEN in .env, or rerun `bun drive:bootstrap` (with PAGESPACE_BOOTSTRAP_TOKEN set) to mint a new Agent key, ' +
+          'then revoke the old one (`pagespace keys list`, `pagespace keys revoke`).',
+      },
+    });
+    assert({
+      given: 'a bogus PAGESPACE_BOOTSTRAP_TOKEN beside a valid drive key',
+      should: 'name PAGESPACE_BOOTSTRAP_TOKEN as the refused credential',
+      actual: await checkDrive(configOf(fake), manifest, envText, {
+        bootstrap: refused,
+        agentKey: readOnly(fake.agentKeyTransport()),
+      }),
+      expected: {
+        code: 2,
+        report:
+          'drive:bootstrap --check: PageSpace refused PAGESPACE_BOOTSTRAP_TOKEN (PageSpace GET /api/drives → 401: Invalid MCP token). ' +
+          'Set it to a live unscoped key (see the header of scripts/drive-bootstrap.ts), ' +
+          "or unset it to check with .env's PAGESPACE_TOKEN.",
+      },
+    });
+  });
+
   test('with no credential', async () => {
     const fake = seeded();
     await bootstrap(fake);
@@ -99,6 +182,33 @@ describe('drive:bootstrap --check credentials', () => {
         fake.calls.length - before,
       ],
       expected: [{ code: 2, report: NO_CHECK_CREDENTIAL }, 0],
+    });
+  });
+});
+
+describe('drive:bootstrap failure output', () => {
+  const error = new Error('PageSpace GET /api/drives → 500: boom');
+  const failed =
+    'drive:bootstrap failed: PageSpace GET /api/drives → 500: boom';
+
+  test('offers the resume hint only when the run writes', () => {
+    assert({
+      given: 'a provisioning run that throws',
+      should: 'print the failure and the resume hint',
+      actual: failureLines([], error),
+      expected: [
+        failed,
+        'Ids created so far are saved in project.config.json; rerun to resume.',
+      ],
+    });
+    assert({
+      given: '--check or --dry-run that throws',
+      should: 'print the failure without a resume hint: nothing was written',
+      actual: [
+        failureLines(['--check'], error),
+        failureLines(['--dry-run'], error),
+      ],
+      expected: [[failed], [failed]],
     });
   });
 });
