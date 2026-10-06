@@ -42,8 +42,7 @@ describe('audit command', () => {
       expected: [
         'bun',
         'audit',
-        '--ignore=GHSA-82fw-gwwq-j7x9',
-        '--ignore=GHSA-vfj7-8cjw-p6xm',
+        ...committed.advisories.map((entry) => `--ignore=${entry.advisory}`),
       ],
     });
   });
@@ -96,15 +95,14 @@ describe('live advisories', () => {
 describe('audit exception registry', () => {
   test('accepts the committed registry shape against its live advisories', () => {
     assert({
-      given: 'the committed registry, its ADR and both advisories live',
+      given: 'the committed registry, its ADR and every listed advisory live',
       should: 'report no problems',
       actual: validateAuditExceptions(committed, {
         today: '2026-09-23',
         knownPaths: new Set([adr]),
-        live: new Map([
-          ['GHSA-82fw-gwwq-j7x9', ['@vitest/mocker', 'vitest']],
-          ['GHSA-vfj7-8cjw-p6xm', ['braces']],
-        ]),
+        live: new Map(
+          committed.advisories.map((entry) => [entry.advisory, entry.packages]),
+        ),
       }),
       expected: [],
     });

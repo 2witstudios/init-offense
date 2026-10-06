@@ -20,6 +20,26 @@
       "owner": "platform",
       "adr": "docs/decisions/0039-dated-dependency-audit-exceptions.md",
       "reviewBy": "2026-11-30"
+    },
+    {
+      "advisory": "GHSA-5gmw-xhrv-c9v3",
+      "packages": ["tinypool"],
+      "dependencyPath": "riteway 9.3.0 (devDependency of every testing workspace) > vitest 3.2.7 > tinypool 1.1.1; better-auth lists vitest only as an optional peer. vitest 3 pins tinypool ^1, so the fixed 2.1.2 cannot be installed under it.",
+      "reason": "Prototype-pollution gadget in tinypool's worker/run options leading to code execution (critical). Fixed only in tinypool 2.1.2, outside vitest 3's range; riteway 9.x hard-depends on vitest ^3.2.4 for its riteway/vitest entry.",
+      "unreachable": "Dev-only and never loaded: tests run on bun:test through riteway/bun; nothing imports riteway/vitest, vitest or tinypool, and no production image installs dev dependencies.",
+      "owner": "platform",
+      "adr": "docs/decisions/0039-dated-dependency-audit-exceptions.md",
+      "reviewBy": "2026-11-30"
+    },
+    {
+      "advisory": "GHSA-85c8-ppgw-ccpr",
+      "packages": ["tinypool"],
+      "dependencyPath": "riteway 9.3.0 (devDependency of every testing workspace) > vitest 3.2.7 > tinypool 1.1.1; better-auth lists vitest only as an optional peer. vitest 3 pins tinypool ^1, so the fixed 2.1.2 cannot be installed under it.",
+      "reason": "Prototype-pollution gadget in tinypool's worker/run options leading to code execution (critical). Fixed only in tinypool 2.1.2, outside vitest 3's range; riteway 9.x hard-depends on vitest ^3.2.4 for its riteway/vitest entry.",
+      "unreachable": "Dev-only and never loaded: tests run on bun:test through riteway/bun; nothing imports riteway/vitest, vitest or tinypool, and no production image installs dev dependencies.",
+      "owner": "platform",
+      "adr": "docs/decisions/0039-dated-dependency-audit-exceptions.md",
+      "reviewBy": "2026-11-30"
     }
   ]
 }
