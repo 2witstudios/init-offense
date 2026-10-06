@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "init-offense",
-  "displayName": "init-offense",
+  "displayName": "Init Offense",
   "repo": "2witstudios/acme",
   "owner": "2witstudios",
   "autonomyEnv": "AGENT_AUTONOMOUS",
@@ -14,7 +14,7 @@
   },
   "pagespace": {
     "apiUrl": "https://pagespace.ai",
-    "driveName": "init-offense",
+    "driveName": "Init Offense",
     "driveId": "j5rqt7l7ze1kg8gigt4xg2iq",
     "pages": {
       "roadmap": "azt08lqfikpcib6bwqbvkf43",
