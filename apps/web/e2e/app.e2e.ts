@@ -51,6 +51,31 @@ test('guarded areas send visitors to sign-in and render for a member', async ({
     await expectShell(page, route, title);
 });
 
+test('pages link the brand icon and the fallback favicon resolves', async ({
+  page,
+  request,
+}) => {
+  const missing: string[] = [];
+  page.on('response', (response) => {
+    if (response.status() === 404) missing.push(response.url());
+  });
+  await page.goto('/sign-in');
+  const href = await page
+    .locator('head link[rel="icon"][type="image/svg+xml"]')
+    .getAttribute('href');
+  const icon = await request.get(href ?? '/missing-icon');
+  expect([icon.status(), icon.headers()['content-type']]).toEqual([
+    200,
+    'image/svg+xml',
+  ]);
+  const favicon = await request.get('/favicon.ico');
+  expect([favicon.status(), favicon.headers()['content-type']]).toEqual([
+    200,
+    'image/x-icon',
+  ]);
+  expect(missing).toEqual([]);
+});
+
 test('production security and correlation headers are present', async ({
   request,
 }) => {
