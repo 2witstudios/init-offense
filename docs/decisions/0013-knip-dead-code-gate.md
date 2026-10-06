@@ -9,6 +9,15 @@ Bun (`bunx --bun knip`; Knip 6 officially supports Bun) and fails non-zero on
 any finding, so drift is caught in `bun check` and the CI `checks` matrix
 instead of in review.
 
+The script starts Knip in `scripts/` with `--directory ..`. Knip builds its
+config loader (jiti) with the working directory as if it were a file, so the
+loader's `tsconfig.json` search begins at the working directory's parent;
+run from the root it would skip this repository and fail on any unrelated
+parent `tsconfig.json` (for example one whose `extends` target is gone).
+From `scripts/` the search stops at the root `tsconfig.json`, which
+compiles nothing (`"files": []`); every workspace keeps its own config.
+`scripts/package-scripts.test.ts` pins both halves.
+
 Workspaces are discovered from the root `package.json` `workspaces` array;
 Knip resolved every entry point, plugin (Next.js, Playwright, Drizzle,
 ESLint) and `*.test.ts` file with no custom entry configuration. The only

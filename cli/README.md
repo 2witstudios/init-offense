@@ -184,9 +184,7 @@ override with `--dir`), runs `format:check`, `lint`, `knip`,
 `metrics:check` and `build` in order, writes each stage's output to
 `<dir>.logs/<stage>.log` and prints a Markdown results table. It stops at
 the first failure unless `--keep-going`; `--stages lint,test` runs a
-subset. Keep `<dir>` out of any directory with a `tsconfig.json` above
-it: knip's config loader walks up past the project root and fails on a
-stray one.
+subset.
 
 `--e2e` (or `e2e` in `--stages`) adds the browser suite after the other
 stages (`cli/verify-e2e.ts`); it needs Docker and the Playwright browsers:
