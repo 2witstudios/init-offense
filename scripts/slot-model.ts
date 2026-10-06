@@ -1,9 +1,10 @@
 /**
  * Pure model of local database slots (ADR 0034). One shared Postgres and
  * Redis serve every checkout; each checkout owns the databases and Redis
- * namespaces derived here from its folder, never chosen by hand. The
- * effectful CLI lives in slot.ts; .env values are in slot-env.ts and port
- * blocks in slot-ports.ts.
+ * namespaces derived here from its folder, never chosen by hand. Who owns
+ * a slot (main checkout, worktree or standalone clone) and which slots a
+ * prune may drop is in slot-ownership.ts. The effectful CLI lives in
+ * slot.ts; .env values are in slot-env.ts and port blocks in slot-ports.ts.
  */
 import { basename } from 'node:path';
 import { expectedTestRedisDatabase, testRedisRefusal } from '@acme/config';
@@ -141,7 +142,8 @@ export function liveWorktreeIds(paths: readonly string[]): {
   return { ids: [...owners.keys()], unslotted };
 }
 
-const idOfDatabase = (name: string): string | undefined => {
+/** The slot id a worktree-slot database name maps back to, if any. */
+export const idOfDatabase = (name: string): string | undefined => {
   if (!name.startsWith(worktreeDatabasePrefix)) return undefined;
   const id = name
     .slice(worktreeDatabasePrefix.length)
@@ -150,7 +152,8 @@ const idOfDatabase = (name: string): string | undefined => {
   return isSlotId(id) ? id : undefined;
 };
 
-const idOfNamespace = (namespace: string): string | undefined => {
+/** The slot id a worktree-slot Redis namespace maps back to, if any. */
+export const idOfNamespace = (namespace: string): string | undefined => {
   if (!namespace.startsWith(worktreeNamespacePrefix)) return undefined;
   const id = namespace
     .slice(worktreeNamespacePrefix.length)
@@ -158,39 +161,6 @@ const idOfNamespace = (namespace: string): string | undefined => {
     .replaceAll('-', '_');
   return isSlotId(id) ? id : undefined;
 };
-
-/**
- * Worktree slots whose worktree is gone. Names that do not parse as a
- * worktree slot (main, the template, foreign databases) are never selected.
- */
-export function findOrphans({
-  liveIds,
-  databases,
-  namespaces,
-}: {
-  readonly liveIds: readonly string[];
-  readonly databases: readonly string[];
-  readonly namespaces: readonly string[];
-}) {
-  const live = new Set(liveIds);
-  const orphaned = (id: string | undefined): id is string =>
-    id !== undefined && !live.has(id);
-  const orphanDatabases = databases.filter((name) =>
-    orphaned(idOfDatabase(name)),
-  );
-  const orphanNamespaces = namespaces.filter((name) =>
-    orphaned(idOfNamespace(name)),
-  );
-  const ids = new Set([
-    ...orphanDatabases.map(idOfDatabase),
-    ...orphanNamespaces.map(idOfNamespace),
-  ]);
-  return {
-    ids: [...ids].filter((id): id is string => id !== undefined).sort(),
-    databases: [...orphanDatabases].sort(),
-    namespaces: [...orphanNamespaces].sort(),
-  };
-}
 
 const databaseName = (url: string | undefined): string | undefined => {
   if (!url) return undefined;
@@ -293,8 +263,11 @@ export function serviceRefusal(env: Env): string | undefined {
   return undefined;
 }
 
-/** Why `bun db:reset` must refuse this target, or undefined to proceed. */
-export function resetRefusal(slot: Slot, env: Env): string | undefined {
+/**
+ * Why `bun db:reset` must refuse before it opens any connection: production,
+ * no ALLOW_DATABASE_RESET=yes, or a DATABASE_URL that is not loopback.
+ */
+export function resetEnvRefusal(env: Env): string | undefined {
   if (env.NODE_ENV === 'production') return 'Reset never runs in production';
   if (env.ALLOW_DATABASE_RESET !== 'yes')
     return 'Reset requires ALLOW_DATABASE_RESET=yes';
@@ -306,7 +279,14 @@ export function resetRefusal(slot: Slot, env: Env): string | undefined {
   }
   if (!loopbackHosts.has(url.hostname))
     return 'Reset requires a loopback DATABASE_URL';
-  const name = databaseName(url.toString());
+  return undefined;
+}
+
+/** Why `bun db:reset` must refuse this target, or undefined to proceed. */
+export function resetRefusal(slot: Slot, env: Env): string | undefined {
+  const refusal = resetEnvRefusal(env);
+  if (refusal) return refusal;
+  const name = databaseName(env.DATABASE_URL);
   if (name !== slot.database && name !== slot.testDatabase)
     return `Reset accepts only this checkout's databases (${slot.database}, ${slot.testDatabase}); bun slot:reset-e2e resets ${slot.e2eDatabase}`;
   return undefined;

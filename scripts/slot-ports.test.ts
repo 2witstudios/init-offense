@@ -1,10 +1,9 @@
 import { expect } from 'bun:test';
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
 import {
+  isPortBlock,
   mainAppPort,
-  parsePortBlockComment,
   pickPortBlock,
-  portBlockComment,
   portBlockPorts,
   slotPorts,
 } from './slot-ports';
@@ -24,18 +23,13 @@ describe('port blocks', () => {
     });
   });
 
-  test('round-trips the claim stored on the slot database', () => {
+  test('recognises only blocks 1 to 499', () => {
     assert({
-      given: 'a port block comment and foreign comments',
-      should: 'parse only the exact claim format',
-      actual: [
-        parsePortBlockComment(portBlockComment(12)),
-        parsePortBlockComment('acme-slot port-block=12; drop'),
-        parsePortBlockComment(null),
-      ],
-      expected: [12, undefined, undefined],
+      given: 'blocks inside and outside the range',
+      should: 'accept only whole numbers from 1 to 499',
+      actual: [0, 1, 499, 500, 1.5].map(isPortBlock),
+      expected: [false, true, true, false, false],
     });
-    expect(() => portBlockComment(0)).toThrow(/port block/);
   });
 
   test("reserves the app, its three web e2e ports and realtime's e2e and dev ports", () => {

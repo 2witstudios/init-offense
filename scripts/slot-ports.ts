@@ -1,7 +1,7 @@
 /**
  * Port blocks of local slots (ADR 0034), split from slot-model.ts: which
- * ports a slot's app, browser suite and realtime server use, and the claim
- * that reserves a worktree's block on the shared stack.
+ * ports a slot's app, browser suite and realtime server use, and the pick
+ * of a free block. The claim recording it is in slot-ownership.ts.
  */
 
 // realtime (ADR 0031): a dev port distinct from `app`, and an e2e port at
@@ -57,22 +57,9 @@ export const portBlockPorts = (block: number): readonly number[] => {
   return [app, app + 1, app + 2, app + 3, app + 4, app + 5];
 };
 
-const portBlockClaim = /^acme-slot port-block=([1-9][0-9]{0,2})$/;
-
-/** The claim stored as the slot database's comment (shared, self-cleaning). */
-export function portBlockComment(block: number): string {
-  if (!Number.isInteger(block) || block < 1 || block > maxPortBlock)
-    throw new Error(`Invalid port block ${block}`);
-  return `acme-slot port-block=${block}`;
-}
-
-export function parsePortBlockComment(
-  comment: string | null | undefined,
-): number | undefined {
-  const match = portBlockClaim.exec(comment ?? '');
-  const block = match ? Number(match[1]) : undefined;
-  return block !== undefined && block <= maxPortBlock ? block : undefined;
-}
+/** Whether `block` is a worktree port block (1..499). */
+export const isPortBlock = (block: number): boolean =>
+  Number.isInteger(block) && block >= 1 && block <= maxPortBlock;
 
 export function pickPortBlock({
   own,

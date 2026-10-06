@@ -8,9 +8,16 @@
  *              changes nothing.
  *   reset-e2e  empty and re-migrate this checkout's e2e database and delete
  *              its e2e Redis keys, so a browser run starts from the baseline.
- *   down       drop this worktree's databases and Redis keys (refused on main).
- *   prune      drop the databases and Redis keys of worktrees git no longer
- *              lists.
+ *   down       drop this checkout's own worktree or clone slot (refused on
+ *              main and on a slot recorded for another live checkout).
+ *   prune      drop the slots whose recorded checkout no longer exists (and,
+ *              from the main repository, unrecorded slots git no longer lists).
+ *
+ * Which slot a checkout gets is decided from the ownership records the slots
+ * carry (slot-ownership.ts): only the recorded main checkout gets the main
+ * slot, a standalone clone elsewhere gets a clone slot of its own, and
+ * `--claim-main` lets the main checkout claim a main slot that predates the
+ * records or whose recorded checkout was moved away.
  *
  * The server comes from the checkout's .env URLs (host, port, credentials),
  * which is how the admin connection is injected. `--checkout <path>` and
@@ -24,7 +31,6 @@ import { parseArgs } from 'node:util';
 import {
   createSlotDatabase,
   dropSlotDatabase,
-  listSlotDatabases,
   provisionTestRoles,
   resetPublicSchema,
   setSlotDatabaseComment,
@@ -34,33 +40,30 @@ import { dropAllTestRunDatabases } from '@acme/db/test-runs';
 import { deleteNamespace } from '@acme/redis/namespaces';
 import { readEnvValue, rewriteEnv, slotEnvValues } from './slot-env';
 import { e2eRole, serviceRefusal, type Slot } from './slot-model';
-import {
-  APP_PORT_ENV,
-  parsePortBlockComment,
-  pickPortBlock,
-  portBlockComment,
-  portBlockPorts,
-} from './slot-ports';
+import { APP_PORT_ENV, pickPortBlock, portBlockPorts } from './slot-ports';
+import { parseSlotClaim, slotClaimComment } from './slot-ownership';
 import { STACK_PORT_ENV, withStackPorts } from './slot-naming';
 import { stackReachable, withDatabase } from './slot-stack';
 import { clearTestNamespaces, requireRedisDatabases } from './slot-redis';
 import {
   inspectOrphans,
-  liveSlotIds,
+  locateCheckout,
   migrate,
   migratorOf,
   openServices,
+  readSlotRecords,
   resolveCheckout,
   run,
   worktreeDatabases,
   type Checkout,
+  type Location,
   type SlotServices,
 } from './slot-services';
 
 const root = resolve(import.meta.dir, '..');
 
 async function prune(services: SlotServices, checkout: Checkout) {
-  const orphans = await inspectOrphans(services, await liveSlotIds(checkout));
+  const orphans = await inspectOrphans(services, checkout);
   for (const database of orphans.databases)
     await dropSlotDatabase(services.admin, database);
   for (const namespace of orphans.namespaces)
@@ -83,23 +86,34 @@ const isPortFree = (port: number): boolean => {
   }
 };
 
-async function claimPortBlock(admin: SQL, slot: Slot): Promise<number> {
-  const databases = await listSlotDatabases(admin, worktreeDatabases);
-  const own = parsePortBlockComment(
-    databases.find(({ name }) => name === slot.database)?.comment,
-  );
-  const claimed = databases
-    .filter(({ name }) => name !== slot.database)
-    .map(({ comment }) => parsePortBlockComment(comment))
-    .filter((block): block is number => block !== undefined);
-  const block = pickPortBlock({
-    own,
-    claimed,
-    isFree: (candidate) => portBlockPorts(candidate).every(isPortFree),
-  });
-  if (own === undefined)
-    await setSlotDatabaseComment(admin, slot.database, portBlockComment(block));
-  return block;
+/**
+ * Records this checkout as the slot's owner on its dev database, with a
+ * worktree or clone slot's port block: the claim every other checkout reads.
+ */
+async function recordClaim(
+  admin: SQL,
+  { slot, path }: Checkout,
+): Promise<number | undefined> {
+  const records = await readSlotRecords(admin);
+  const current =
+    records.find(({ name }) => name === slot.database)?.comment ?? null;
+  let portBlock: number | undefined;
+  if (slot.kind === 'worktree')
+    portBlock = pickPortBlock({
+      own: parseSlotClaim(current).portBlock,
+      claimed: records
+        .filter(
+          ({ name }) =>
+            name.startsWith(worktreeDatabases) && name !== slot.database,
+        )
+        .map(({ comment }) => parseSlotClaim(comment).portBlock)
+        .filter((block): block is number => block !== undefined),
+      isFree: (candidate) => portBlockPorts(candidate).every(isPortFree),
+    });
+  const claim = slotClaimComment({ portBlock, checkout: path });
+  if (current !== claim)
+    await setSlotDatabaseComment(admin, slot.database, claim);
+  return portBlock;
 }
 
 async function readEnvFile(path: string): Promise<string> {
@@ -132,16 +146,24 @@ const envOf = (content: string) =>
 const describeOrphans = (ids: readonly string[]) =>
   ids.length === 0 ? 'none' : ids.join(', ');
 
+// A clone slot is a worktree-kind slot keyed by its path (slot-ownership.ts).
+const slotKind = (slot: Slot) =>
+  slot.kind === 'worktree' && slot.id.startsWith('clone_')
+    ? 'clone'
+    : slot.kind;
+
 const slotDatabases = (slot: Slot) =>
   [slot.database, slot.testDatabase, slot.e2eDatabase] as const;
 
-async function up(checkout: Checkout, envPath: string) {
+type Options = { readonly claimMain: boolean };
+
+async function up(location: Location, envPath: string, { claimMain }: Options) {
   const content = await readEnvFile(envPath);
   const env = envOf(content);
   // Refuse a stale or remote .env before touching Docker or any service.
   const refusal = serviceRefusal(env);
   if (refusal) throw new Error(refusal);
-  await migratorOf(checkout.path);
+  await migratorOf(location.path);
   // Start the stack only when it is down: `compose up` on a running stack
   // recreates it whenever this branch's compose file differs, wiping every
   // slot's Redis keys and restarting Postgres under every checkout.
@@ -152,19 +174,21 @@ async function up(checkout: Checkout, envPath: string) {
     });
   const services = openServices(env);
   try {
-    const { slot } = checkout;
-    const { pruned, created, values } = await withSlotLock(
+    const { slot, pruned, created, values } = await withSlotLock(
       services.admin,
       async () => {
+        const checkout = await resolveCheckout(
+          services.admin,
+          location,
+          claimMain,
+        );
+        const { slot } = checkout;
         const pruned = await prune(services, checkout);
         const created: string[] = [];
         for (const database of slotDatabases(slot))
           if (await createSlotDatabase(services.admin, database))
             created.push(database);
-        const portBlock =
-          slot.kind === 'worktree'
-            ? await claimPortBlock(services.admin, slot)
-            : undefined;
+        const portBlock = await recordClaim(services.admin, checkout);
         // ISSUE-237: the test database is 2 + the port block, so the
         // server must offer that many databases; fail before writing .env.
         await requireRedisDatabases(
@@ -180,14 +204,14 @@ async function up(checkout: Checkout, envPath: string) {
             checkout.path,
           );
         await provisionTestRoles(services.admin, e2eRole);
-        return { pruned, created, values };
+        return { slot, pruned, created, values };
       },
     );
     const rewritten = rewriteEnv(content, values);
     if (rewritten.changed) await writeFile(envPath, rewritten.content);
     process.stdout.write(
       [
-        `Slot ${slot.id} (${slot.kind})`,
+        `Slot ${slot.id} (${slotKind(slot)})`,
         `  databases: ${slotDatabases(slot).join(', ')} (created: ${created.join(', ') || 'none'}; migrated)`,
         `  redis namespaces: ${slot.namespace}, ${slot.e2eNamespace}`,
         `  test redis: ${values.TEST_REDIS_URL}`,
@@ -202,15 +226,17 @@ async function up(checkout: Checkout, envPath: string) {
   }
 }
 
-async function down(checkout: Checkout, envPath: string) {
-  const { slot } = checkout;
-  if (slot.kind === 'main')
-    throw new Error(
-      'slot:down refuses the main checkout: its databases are the shared defaults',
-    );
+async function down(location: Location, envPath: string) {
   const services = openServices(envOf(await readEnvFile(envPath)));
   try {
-    const removed = await withSlotLock(services.admin, async () => {
+    const { slot, removed } = await withSlotLock(services.admin, async () => {
+      // Classified under the lock: only this checkout's own slot is dropped,
+      // never one recorded for another live checkout.
+      const { slot } = await resolveCheckout(services.admin, location);
+      if (slot.kind === 'main')
+        throw new Error(
+          'slot:down refuses the main checkout: its databases are the shared defaults',
+        );
       // Run databases first (ISSUE-238): a run's own copy of the slot's test database.
       await dropAllTestRunDatabases(services.admin, slot.testDatabase);
       for (const database of slotDatabases(slot))
@@ -221,7 +247,7 @@ async function down(checkout: Checkout, envPath: string) {
           removed += await deleteNamespace(client, namespace);
       // The slot's own test database: every namespace a run left behind.
       removed += await clearTestNamespaces(services.testRedis);
-      return removed;
+      return { slot, removed };
     });
     process.stdout.write(
       `Slot ${slot.id}: dropped ${slotDatabases(slot).join(', ')}; deleted ${removed} Redis keys\n`,
@@ -237,38 +263,39 @@ async function down(checkout: Checkout, envPath: string) {
  * database whose row counts integration evidence reads, and this clears them
  * between runs.
  */
-async function resetE2E(checkout: Checkout, envPath: string) {
+async function resetE2E(location: Location, envPath: string) {
   const env = envOf(await readEnvFile(envPath));
-  const { slot } = checkout;
   const services = openServices(env);
-  const database = services.connect(slot.e2eDatabase);
+  let database: SQL | undefined;
   try {
-    const removed = await withSlotLock(services.admin, async () => {
+    const { slot, removed } = await withSlotLock(services.admin, async () => {
+      const { slot } = await resolveCheckout(services.admin, location);
+      database = services.connect(slot.e2eDatabase);
       await resetPublicSchema(database);
       await migrate(
         withDatabase(env.DATABASE_URL ?? '', slot.e2eDatabase),
-        checkout.path,
+        location.path,
       );
       await provisionTestRoles(services.admin, e2eRole);
       let removed = 0;
       for (const client of services.redis)
         removed += await deleteNamespace(client, slot.e2eNamespace);
-      return removed;
+      return { slot, removed };
     });
     process.stdout.write(
       `Slot ${slot.id}: reset ${slot.e2eDatabase} to the baseline; deleted ${removed} ${slot.e2eNamespace} Redis keys\n`,
     );
   } finally {
-    await database.close();
+    await database?.close();
     await services.close();
   }
 }
 
-async function pruneCommand(checkout: Checkout, envPath: string) {
+async function pruneCommand(location: Location, envPath: string) {
   const services = openServices(envOf(await readEnvFile(envPath)));
   try {
-    const pruned = await withSlotLock(services.admin, () =>
-      prune(services, checkout),
+    const pruned = await withSlotLock(services.admin, async () =>
+      prune(services, await resolveCheckout(services.admin, location)),
     );
     process.stdout.write(
       `Pruned orphan slots: ${describeOrphans(pruned.ids)}\n`,
@@ -282,7 +309,11 @@ async function main(argv: readonly string[]) {
   const { positionals, values } = parseArgs({
     args: [...argv],
     allowPositionals: true,
-    options: { checkout: { type: 'string' }, env: { type: 'string' } },
+    options: {
+      checkout: { type: 'string' },
+      env: { type: 'string' },
+      'claim-main': { type: 'boolean' },
+    },
   });
   const command = positionals[0];
   const commands = {
@@ -293,12 +324,16 @@ async function main(argv: readonly string[]) {
   } as const;
   if (!command || !Object.hasOwn(commands, command))
     throw new Error(
-      'Usage: bun scripts/slot.ts up|reset-e2e|down|prune [--checkout <path>] [--env <path>]',
+      'Usage: bun scripts/slot.ts up|reset-e2e|down|prune [--checkout <path>] [--env <path>] [--claim-main]',
     );
-  const checkout = await resolveCheckout(values.checkout ?? root);
+  const claimMain = values['claim-main'] === true;
+  if (claimMain && command !== 'up')
+    throw new Error('--claim-main applies to slot:up only');
+  const location = await locateCheckout(values.checkout ?? root);
   await commands[command as keyof typeof commands](
-    checkout,
-    values.env ? resolve(values.env) : join(checkout.path, '.env'),
+    location,
+    values.env ? resolve(values.env) : join(location.path, '.env'),
+    { claimMain },
   );
 }
 
