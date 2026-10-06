@@ -36,7 +36,7 @@ export const NO_CHECK_CREDENTIAL =
  * credential and how to replace it. Nothing was written, so there is
  * nothing to resume.
  */
-export function refusedCredential(
+function refusedCredential(
   credential: keyof CheckCredentials,
   error: HttpError,
 ): string {
