@@ -26,9 +26,9 @@ describe('signInReducer: typing', () => {
       should: 'keep the new address and drop the stale notice',
       actual: signInReducer(entering({ notice: 'undeliverable' }), {
         type: 'email-typed',
-        email: 'j@school.edu',
+        email: 'j@example.com',
       }),
-      expected: entering({ email: 'j@school.edu' }),
+      expected: entering({ email: 'j@example.com' }),
     });
   });
 
@@ -48,7 +48,7 @@ describe('signInReducer: magic link', () => {
     assert({
       given: 'an address with surrounding spaces',
       should: 'trim it and mark the link request pending',
-      actual: signInReducer(entering({ email: '  jordan@lincoln.edu ' }), {
+      actual: signInReducer(entering({ email: '  jordan@example.com ' }), {
         type: 'link-requested',
       }),
       expected: entering({ pending: 'link' }),

@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { createElement as h } from 'react';
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
+import { appConfig } from '../../../app-config';
 import { Button } from '../../components/button/button';
 import { byText, findElements } from '../../test-support/find-elements';
 import { SignInForm, type SignInFormProps } from './sign-in-form';
@@ -49,6 +50,21 @@ describe('SignInForm', () => {
     });
   });
 
+  test('greets people with the product, in product-neutral copy', () => {
+    const page = html();
+    assert({
+      given: 'an idle form',
+      should:
+        'head it with the product name and a neutral email placeholder, with no template-specific wording',
+      actual: [
+        page.includes(`Welcome to ${appConfig.brand.displayName}.`),
+        page.includes('placeholder="you@example.com"'),
+        /take the floor|school\.edu/i.test(page),
+      ],
+      expected: [true, true, false],
+    });
+  });
+
   test('sends new people to email, not the saved-passkey prompt', () => {
     const page = html();
     assert({
@@ -67,7 +83,7 @@ describe('SignInForm', () => {
   });
 
   test('disables both paths while a link is sending', () => {
-    const page = html({ email: 'j@school.edu', pending: 'link' });
+    const page = html({ email: 'j@example.com', pending: 'link' });
     assert({
       given: 'a pending link request',
       should: 'show progress, announce it, and disable every control',
@@ -95,7 +111,7 @@ describe('SignInForm', () => {
   });
 
   test('ties an undeliverable address to the field as an alert', () => {
-    const page = html({ email: 'j@school.edu', notice: 'undeliverable' });
+    const page = html({ email: 'j@example.com', notice: 'undeliverable' });
     assert({
       given: 'an undeliverable notice',
       should: 'raise an alert the input points at',
@@ -149,13 +165,13 @@ describe('SignInForm', () => {
       tree,
       (element) => element.props['typeEmail'] !== undefined,
     )[0];
-    (field?.props['typeEmail'] as (email: string) => void)('j@school.edu');
+    (field?.props['typeEmail'] as (email: string) => void)('j@example.com');
     assert({
       given: 'a submit, a passkey click, and typing',
       should:
         'post the form to its action, marking the request, and call the matching actions',
       actual: [form?.props['action'] === action, calls],
-      expected: [true, ['link', 'passkey', 'type:j@school.edu']],
+      expected: [true, ['link', 'passkey', 'type:j@example.com']],
     });
   });
 

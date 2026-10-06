@@ -1,3 +1,4 @@
+import { appConfig } from '../../../app-config';
 import { Button } from '../../components/button/button';
 import { Icon } from '../../components/icon/icon';
 import { AuthFrame, AuthHeading, taglinePanel } from '../auth-frame/auth-frame';
@@ -42,7 +43,7 @@ const NOTICE_ID = 'username-notice';
 const HINT_ID = 'username-hint';
 
 /**
- * Choosing the public name. It is the identity opponents and spectators see,
+ * Choosing the public name. It is the identity other people see,
  * so the form says so, states the rule up front, and keeps what was typed
  * through every recoverable error. It is a real POST: before hydration, or
  * without JavaScript, the browser submits it to the same server action.
@@ -61,8 +62,7 @@ export function UsernameForm({
   return (
     <AuthFrame panel={taglinePanel}>
       <AuthHeading eyebrow="One last step" title="Choose your username.">
-        This is the name opponents and spectators see. You can play once you
-        have one.
+        {`This is the name other people see in ${appConfig.brand.displayName}.`}
       </AuthHeading>
       <form
         action={action}

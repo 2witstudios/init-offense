@@ -9,7 +9,7 @@ import { CheckInbox, type CheckInboxProps } from './check-inbox';
 setupRitewayBun();
 
 const props = (overrides: Partial<CheckInboxProps> = {}): CheckInboxProps => ({
-  email: 'jordan@lincoln.edu',
+  email: 'jordan@example.com',
   resendInMs: 42_000,
   resending: false,
   resend: () => {},

@@ -42,7 +42,7 @@ test('every auth and security screen has exactly one h1 naming the page (ISSUE-2
 }) => {
   test.slow();
   await page.goto('/sign-in');
-  await expectOneH1(page, /take the floor/i);
+  await expectOneH1(page, /welcome to/i);
 
   // Each state requests its own magic link: reset between them so none
   // spends another's share of the per-client mail ceiling.
@@ -81,7 +81,7 @@ test.describe('with JavaScript off (ISSUE-216)', () => {
     page,
   }) => {
     await page.goto('/sign-in');
-    await expectOneH1(page, /take the floor/i);
+    await expectOneH1(page, /welcome to/i);
     await expectServerRenderedH1s(page);
   });
 });

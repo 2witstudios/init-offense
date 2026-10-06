@@ -8,7 +8,7 @@ export const entering = (
   overrides: Partial<Extract<SignInState, { step: 'enter-email' }>> = {},
 ): SignInState => ({
   step: 'enter-email',
-  email: 'jordan@lincoln.edu',
+  email: 'jordan@example.com',
   pending: 'none',
   ...overrides,
 });
@@ -17,7 +17,7 @@ export const inbox = (
   overrides: Partial<Extract<SignInState, { step: 'check-inbox' }>> = {},
 ): SignInState => ({
   step: 'check-inbox',
-  email: 'jordan@lincoln.edu',
+  email: 'jordan@example.com',
   sentAt: iso(1_000),
   resending: false,
   ...overrides,

@@ -29,7 +29,7 @@ describe('renderSignInFlow', () => {
       renderSignInFlow(
         {
           step: 'enter-email',
-          email: 'j@school.edu',
+          email: 'j@example.com',
           pending: 'none',
           notice: 'rate-limited',
         },
@@ -48,7 +48,7 @@ describe('renderSignInFlow', () => {
         element.props['requestLink'] === actions.requestLink,
         element.props['signInWithPasskey'] === actions.signInWithPasskey,
       ],
-      expected: [true, 'j@school.edu', 'rate-limited', true, true, true],
+      expected: [true, 'j@example.com', 'rate-limited', true, true, true],
     });
   });
 
@@ -57,7 +57,7 @@ describe('renderSignInFlow', () => {
       renderSignInFlow(
         {
           step: 'check-inbox',
-          email: 'j@school.edu',
+          email: 'j@example.com',
           sentAt: '2026-09-21T12:00:00.000Z',
           resending: false,
         },
@@ -82,7 +82,7 @@ describe('renderSignInFlow', () => {
       renderSignInFlow(
         {
           step: 'check-inbox',
-          email: 'j@school.edu',
+          email: 'j@example.com',
           sentAt: '2026-09-21T12:05:00.000Z',
           resending: false,
         },

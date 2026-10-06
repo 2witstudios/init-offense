@@ -170,6 +170,25 @@ test('renderConfirmPage: the style nonce matches the request header exactly', as
   });
 });
 
+test('renderConfirmPage: the expired and sent states use product-neutral copy', async () => {
+  const expired = await renderConfirmPage(
+    { kind: 'expired', hidden: { callbackURL: '/app' } },
+    request(),
+  ).text();
+  const sent = await renderConfirmPage({ kind: 'sent' }, request()).text();
+  assert({
+    given: 'the expired resend form and the sent hint',
+    should:
+      'use a neutral example address and work-email hint, with no school wording',
+    actual: [
+      expired.includes('placeholder="you@example.com"'),
+      sent.includes('<strong>Work email?</strong>'),
+      /school/i.test(expired + sent),
+    ],
+    expected: [true, true, false],
+  });
+});
+
 test('renderConfirmPage: the sent state is a single-h1, script-free document', async () => {
   const html = await renderConfirmPage({ kind: 'sent' }, request()).text();
   assert({

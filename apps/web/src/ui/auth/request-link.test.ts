@@ -157,11 +157,11 @@ describe('signInStateFrom', () => {
       actual: [
         signInStateFrom({ email: '' }, at),
         signInStateFrom(
-          { email: 'ada@school.edu', outcome: { kind: 'sent' } },
+          { email: 'ada@example.com', outcome: { kind: 'sent' } },
           at,
         ),
         signInStateFrom(
-          { email: 'ada@school.edu', outcome: { kind: 'rate-limited' } },
+          { email: 'ada@example.com', outcome: { kind: 'rate-limited' } },
           at,
         ),
       ],
@@ -169,13 +169,13 @@ describe('signInStateFrom', () => {
         initialSignInState(),
         {
           step: 'check-inbox',
-          email: 'ada@school.edu',
+          email: 'ada@example.com',
           sentAt: at,
           resending: false,
         },
         {
           step: 'enter-email',
-          email: 'ada@school.edu',
+          email: 'ada@example.com',
           pending: 'none',
           notice: 'rate-limited',
         },

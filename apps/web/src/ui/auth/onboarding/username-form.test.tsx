@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { createElement as h } from 'react';
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
+import { appConfig } from '../../../app-config';
 import { findElements } from '../../test-support/find-elements';
 import { UsernameForm, type UsernameFormProps } from './username-form';
 
@@ -87,6 +88,22 @@ describe('UsernameForm', () => {
           'href="/sign-in?next=%2Fonboarding%2Fusername"',
         ),
         render({ notice: 'taken' }).includes('Sign in again</a>'),
+      ],
+      expected: [true, false],
+    });
+  });
+
+  test('explains the name in product-neutral copy', () => {
+    const page = render();
+    assert({
+      given: 'the choose step',
+      should:
+        'say who sees the name in this product, with no template-specific wording',
+      actual: [
+        page.includes(
+          `This is the name other people see in ${appConfig.brand.displayName}.`,
+        ),
+        /\b(opponents?|spectators?|play)\b/i.test(page),
       ],
       expected: [true, false],
     });
