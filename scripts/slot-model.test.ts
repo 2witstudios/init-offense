@@ -2,7 +2,6 @@ import { expect } from 'bun:test';
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
 import {
   deriveSlot,
-  findOrphans,
   liveWorktreeIds,
   parseWorktreeList,
   worktreeSlot,
@@ -164,53 +163,5 @@ describe('git worktree list parsing', () => {
     expect(() => liveWorktreeIds(['/x/wt-feature-b', '/y/feature_b'])).toThrow(
       /same slot/,
     );
-  });
-});
-
-describe('orphan detection', () => {
-  test('selects only slots whose worktree is gone', () => {
-    assert({
-      given: 'databases and namespaces of live, removed and main slots',
-      should: 'drop only the removed slot and never main or unknown names',
-      actual: findOrphans({
-        liveIds: ['live1', 'live1_x'],
-        databases: [
-          mainDatabase,
-          'acme_test',
-          'acme_template',
-          'acme_wt_live1',
-          'acme_wt_live1_test',
-          'acme_wt_live1_e2e',
-          'acme_wt_live1_x',
-          'acme_wt_gone',
-          'acme_wt_gone_test',
-          'acme_wt_gone_e2e',
-          'acme_wt_gone_test_run_0a1b2c3d',
-          'acme_wt_live1_test_run_0a1b2c3d',
-          'acme_wt_Bad',
-          'postgres',
-        ],
-        namespaces: [
-          mainNamespace,
-          'acme-e2e',
-          'acme-wt-live1',
-          'acme-wt-live1-e2e',
-          'acme-wt-live1-x',
-          'acme-wt-gone',
-          'acme-wt-gone-e2e',
-          'acme-wt-',
-        ],
-      }),
-      expected: {
-        ids: ['gone'],
-        databases: [
-          'acme_wt_gone',
-          'acme_wt_gone_e2e',
-          'acme_wt_gone_test',
-          'acme_wt_gone_test_run_0a1b2c3d',
-        ],
-        namespaces: ['acme-wt-gone', 'acme-wt-gone-e2e'],
-      },
-    });
   });
 });

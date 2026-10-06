@@ -11,7 +11,9 @@ import type { SQL } from 'bun';
 import { quoteIdentifier } from './identifiers';
 
 const passwordPattern = /^[a-z0-9-]{1,64}$/;
-const commentPattern = /^[a-z0-9 =-]{1,100}$/;
+// Slot claims hex-encode the owning checkout path (scripts/slot-ownership.ts),
+// so the bound fits a 4096-byte path.
+const commentPattern = /^[a-z0-9 =-]{1,8400}$/;
 
 function quoteLiteral(value: string, pattern: RegExp, label: string): string {
   if (!pattern.test(value)) throw new Error(`Invalid ${label}`);

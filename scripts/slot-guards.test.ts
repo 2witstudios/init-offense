@@ -1,6 +1,8 @@
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
 import { slotEnvValues, withSlotEnv } from './slot-env';
+import { cloneSlotId } from './slot-ownership';
 import {
+  resetEnvRefusal,
   resetRefusal,
   serviceRefusal,
   slotMismatches,
@@ -50,6 +52,30 @@ describe('reset scope', () => {
         }),
       ].map((refusal) => refusal === undefined),
       expected: [true, true, false, false, false, false, false],
+    });
+  });
+
+  test('refuses before connecting, and refuses a clone the main databases', () => {
+    const mainUrl = 'postgres://d:p@localhost:15432/acme';
+    assert({
+      given:
+        'environments checked before any connection, and a clone whose .env still names main',
+      should:
+        'refuse production, an unset flag and a remote host up front, and refuse the clone the main database',
+      actual: [
+        resetEnvRefusal({ ...allowed, DATABASE_URL: mainUrl }),
+        resetEnvRefusal({ ...allowed, NODE_ENV: 'production' }),
+        resetEnvRefusal({ NODE_ENV: 'development', DATABASE_URL: mainUrl }),
+        resetEnvRefusal({
+          ...allowed,
+          DATABASE_URL: 'postgres://d:p@db.example.com:5432/acme',
+        }),
+        resetRefusal(worktreeSlot(cloneSlotId('/tmp/review/acme')), {
+          ...allowed,
+          DATABASE_URL: mainUrl,
+        }),
+      ].map((refusal) => refusal === undefined),
+      expected: [true, false, false, false, false],
     });
   });
 });

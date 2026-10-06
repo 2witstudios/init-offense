@@ -8,7 +8,8 @@ application operations (`apps/web/src/features/<name>/`), and its tests.
 ## Session isolation (one machine)
 
 All sessions share one local Postgres and Redis; each checkout owns the
-databases, Redis namespaces and ports `bun slot:up` derives from its folder
+databases, Redis namespaces and ports `bun slot:up` derives for it and
+records as its own (a standalone clone gets a clone slot, never the main one)
 ([ADR 0034](../decisions/0034-shared-stack-slots.md), recipe in
 [local development](local-development.md#parallel-sessions-on-one-machine)).
 Summary: run `bun slot:up` in a new worktree, `bun doctor` catches a `.env`

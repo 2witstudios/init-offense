@@ -6,10 +6,11 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { serviceRefusal, slotMismatches, type Slot } from './slot-model';
 import {
+  classify,
   inspectOrphans,
-  liveSlotIds,
+  locateCheckout,
   openServices,
-  resolveCheckout,
+  readSlotRecords,
 } from './slot-services';
 import {
   assessGithubIdentity,
@@ -143,31 +144,47 @@ export function orphanCheck(ids: readonly string[]): DoctorCheck {
 }
 
 async function checkSlots(): Promise<readonly DoctorCheck[]> {
-  let checkout;
+  let location;
   try {
-    checkout = await resolveCheckout(root);
+    location = await locateCheckout(root);
   } catch (error) {
     const detail = error instanceof Error ? error.message : 'unresolved';
     return [fail('slot', detail), fail('slot-orphans', 'slot unresolved')];
   }
-  const slot = slotCheck(checkout.slot, process.env);
   // The slot tooling's own refusals are shown as they are; connection
   // failures stay generic so no driver error text reaches the report.
   const refusal = serviceRefusal(process.env);
-  if (refusal) return [slot, fail('slot-orphans', refusal)];
-  let liveIds: readonly string[];
-  try {
-    liveIds = await liveSlotIds(checkout);
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : 'worktrees unread';
-    return [slot, fail('slot-orphans', detail)];
-  }
+  if (refusal) return [fail('slot', refusal), fail('slot-orphans', refusal)];
   let services;
   try {
     services = openServices(process.env);
-    return [slot, orphanCheck((await inspectOrphans(services, liveIds)).ids)];
+    let records;
+    try {
+      records = await readSlotRecords(services.admin);
+    } catch {
+      const unavailable = 'services unavailable';
+      return [fail('slot', unavailable), fail('slot-orphans', unavailable)];
+    }
+    // Which slot this checkout owns comes from the ownership records.
+    let checkout;
+    try {
+      checkout = classify(location, records);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'unresolved';
+      return [fail('slot', detail), fail('slot-orphans', 'slot unresolved')];
+    }
+    const slot = slotCheck(checkout.slot, process.env);
+    try {
+      return [
+        slot,
+        orphanCheck((await inspectOrphans(services, checkout)).ids),
+      ];
+    } catch {
+      return [slot, fail('slot-orphans', 'services unavailable')];
+    }
   } catch {
-    return [slot, fail('slot-orphans', 'services unavailable')];
+    const unavailable = 'services unavailable';
+    return [fail('slot', unavailable), fail('slot-orphans', unavailable)];
   } finally {
     await services?.close().catch(() => undefined);
   }

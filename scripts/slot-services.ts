@@ -1,23 +1,30 @@
 /**
  * The effectful plumbing of `bun slot:*` (ADR 0034), split from slot.ts:
- * which checkout and slot this is, the live worktrees, the admin Postgres
+ * which checkout and slot this is (from the ownership records), the live
+ * worktrees, the admin Postgres
  * and Redis connections, orphan inspection and a checkout's own migrator.
  * db-reset and doctor reuse it; the commands themselves live in slot.ts.
  */
 import { RedisClient, SQL } from 'bun';
+import { existsSync } from 'node:fs';
 import { realpath } from 'node:fs/promises';
 import { join } from 'node:path';
-import { listSlotDatabases } from '@acme/db/slots';
+import { listSlotDatabases, type SlotDatabase } from '@acme/db/slots';
 import { listNamespaces } from '@acme/redis/namespaces';
 import { e2eRedisUrl } from './slot-env';
 import {
-  deriveSlot,
-  findOrphans,
   liveWorktreeIds,
   parseWorktreeList,
   serviceRefusal,
   type Slot,
 } from './slot-model';
+import {
+  classifyCheckout,
+  findOrphans,
+  mainRecordOf,
+  ownershipRefusal,
+  recordedOwner,
+} from './slot-ownership';
 import { slotNaming } from './slot-naming';
 import { withDatabase } from './slot-stack';
 import { openOwnTestRedis } from './slot-redis';
@@ -45,10 +52,23 @@ export const run = async (
 
 const realOrSame = (path: string) => realpath(path).catch(() => path);
 
-export type Checkout = {
+/** Where a checkout is: its real path and its repository's main worktree. */
+export type Location = {
   readonly path: string;
-  readonly slot: Slot;
+  readonly gitMain: string;
 };
+
+export type Checkout = Location & {
+  readonly slot: Slot;
+  /** True when this run (re)claims the main slot for this checkout. */
+  readonly claimsMain: boolean;
+};
+
+/** The slot claims on the shared stack: every database named after the slug. */
+export type SlotRecords = readonly SlotDatabase[];
+
+// A recorded checkout is live while its path exists on disk.
+const isLive = (path: string) => existsSync(path);
 
 const readWorktrees = async (path: string) => {
   const list = parseWorktreeList(
@@ -60,28 +80,50 @@ const readWorktrees = async (path: string) => {
   };
 };
 
-export async function resolveCheckout(start: string): Promise<Checkout> {
+export async function locateCheckout(start: string): Promise<Location> {
   const path = await realOrSame(
     (await run(['git', 'rev-parse', '--show-toplevel'], start)).trim(),
   );
-  const { main } = await readWorktrees(path);
-  return { path, slot: deriveSlot({ checkout: path, mainCheckout: main }) };
+  return { path, gitMain: (await readWorktrees(path)).main };
 }
 
+export const readSlotRecords = (admin: SQL): Promise<SlotRecords> =>
+  listSlotDatabases(admin, naming.databaseBase);
+
 /**
- * Slot ids of every live worktree of the checkout's repository, this one
- * included. Read under the slot lock, right before pruning, so a worktree
- * created (and slotted) while this run waited is never taken for an orphan.
+ * The checkout's slot, decided from the ownership records (slot-ownership.ts):
+ * throws a refusal rather than hand a checkout another checkout's slot.
+ * Callers that change anything read the records under the slot lock.
  */
-export async function liveSlotIds(
-  checkout: Checkout,
-): Promise<readonly string[]> {
-  const { ids } = liveWorktreeIds(
-    (await readWorktrees(checkout.path)).worktrees,
-  );
-  return checkout.slot.kind === 'worktree'
-    ? [...new Set([...ids, checkout.slot.id])]
-    : ids;
+export function classify(
+  location: Location,
+  records: SlotRecords,
+  claimMain = false,
+): Checkout {
+  const { slot, claimsMain } = classifyCheckout({
+    checkout: location.path,
+    gitMain: location.gitMain,
+    main: mainRecordOf(records),
+    isLive,
+    claimMain,
+  });
+  const refusal = ownershipRefusal({
+    slot,
+    checkout: location.path,
+    recorded: recordedOwner(records, slot.database),
+    isLive,
+  });
+  if (refusal) throw new Error(refusal);
+  return { ...location, slot, claimsMain };
+}
+
+/** Reads the records and classifies: the one call most commands need. */
+export async function resolveCheckout(
+  admin: SQL,
+  location: Location,
+  claimMain = false,
+): Promise<Checkout> {
+  return classify(location, await readSlotRecords(admin), claimMain);
 }
 
 export type SlotServices = {
@@ -125,13 +167,25 @@ export function openServices(
   };
 }
 
+/**
+ * Orphaned slots on the shared stack. Read under the slot lock, right before
+ * pruning, so a slot claimed while this run waited is never taken for one.
+ * Only the main slot's own repository may drop slots that predate ownership
+ * records, from its `git worktree list`; every checkout may drop a slot whose
+ * recorded checkout no longer exists, and none ever drops a live one.
+ */
 export async function inspectOrphans(
   services: SlotServices,
-  liveIds: readonly string[],
+  checkout: Checkout,
 ) {
-  const databases = (
-    await listSlotDatabases(services.admin, worktreeDatabases)
-  ).map(({ name }) => name);
+  const records = await readSlotRecords(services.admin);
+  const main = mainRecordOf(records);
+  const ownsMainRepository =
+    checkout.claimsMain ||
+    (main.state === 'recorded' && main.checkout === checkout.gitMain);
+  const legacyLiveIds = ownsMainRepository
+    ? liveWorktreeIds((await readWorktrees(checkout.path)).worktrees).ids
+    : undefined;
   const namespaces = [
     ...new Set(
       (
@@ -143,7 +197,13 @@ export async function inspectOrphans(
       ).flat(),
     ),
   ];
-  return findOrphans({ liveIds, databases, namespaces });
+  return findOrphans({
+    ownId: checkout.slot.kind === 'worktree' ? checkout.slot.id : undefined,
+    databases: records.filter(({ name }) => name.startsWith(worktreeDatabases)),
+    namespaces,
+    isLive,
+    legacyLiveIds,
+  });
 }
 
 /** The checkout's own migrator: its branch may be behind or ahead of ours. */
