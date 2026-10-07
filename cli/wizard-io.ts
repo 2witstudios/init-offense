@@ -211,13 +211,14 @@ const headlessPrompt: Prompt = {
   pause: async (message) => noTerminal(message),
 };
 
-async function reachable(url: string): Promise<boolean> {
+/** True when `url` answers HTTP below 400: redirects count, errors do not. */
+export async function reachable(url: string): Promise<boolean> {
   try {
-    await fetch(url, {
+    const response = await fetch(url, {
       redirect: 'manual',
       signal: AbortSignal.timeout(5_000),
     });
-    return true;
+    return response.status < 400;
   } catch {
     return false;
   }

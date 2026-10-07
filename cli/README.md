@@ -50,7 +50,8 @@ review gate (`wizard-review-app.ts`), and the local run (`wizard-run.ts`, ports 
   resets the main checkout's app ports.
 - **Starting the app.** `bun dev` runs in the foreground with its output
   shown (and its last 16 KB kept); the browser opens once the sign-in page
-  answers. If `bun dev` exits before that (and not because of Ctrl-C), the
+  answers without an HTTP error. If `bun dev` exits before that (and not
+  because of Ctrl-C), the
   wizard fails with exit 1, naming the busy ports when the output says
   `Is port N in use?` or `EADDRINUSE`, and prints the restart command.
 - **Visibility.** When GitHub is chosen, step 1 probes

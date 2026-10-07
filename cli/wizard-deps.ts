@@ -73,7 +73,7 @@ export type WizardDeps = {
    * which reports whether Ctrl-C was pressed while held.
    */
   readonly holdInterrupts: () => () => boolean;
-  /** True once the server answers HTTP at `url`. */
+  /** True once the server answers HTTP below 400 at `url`. */
   readonly reachable: (url: string) => Promise<boolean>;
   readonly readFile: (path: string) => string | null;
   readonly writeFile: (path: string, text: string) => void;
