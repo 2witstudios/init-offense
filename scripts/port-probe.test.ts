@@ -1,5 +1,5 @@
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
-import { isPortFree, portFreeWith } from './port-probe';
+import { errorCode, isPortFree, NO_IPV6, portFreeWith } from './port-probe';
 
 setupRitewayBun();
 
@@ -24,6 +24,14 @@ describe('isPortFree', () => {
   });
 
   test('an IPv6 wildcard listener', () => {
+    // A host without IPv6 cannot hold the wildcard listener at all; any
+    // other bind failure is a real one and stays visible.
+    try {
+      whileListening('::', () => {});
+    } catch (error) {
+      if (NO_IPV6.has(errorCode(error))) return;
+      throw error;
+    }
     assert({
       given: 'another process listening on :: (how next dev listens)',
       should: 'report the port taken',

@@ -14,9 +14,9 @@ export type Bind = (hostname: string, port: number) => void;
 const HOSTS = ['127.0.0.1', '0.0.0.0', '::'] as const;
 
 /** A host without IPv6 answers :: with these; that is not a busy port. */
-const NO_IPV6 = new Set(['EADDRNOTAVAIL', 'EAFNOSUPPORT']);
+export const NO_IPV6 = new Set(['EADDRNOTAVAIL', 'EAFNOSUPPORT']);
 
-const errorCode = (error: unknown): string =>
+export const errorCode = (error: unknown): string =>
   error instanceof Error && 'code' in error ? String(error.code) : '';
 
 /** The probe over a given `bind`, so tests can stand in for the kernel. */
@@ -32,8 +32,14 @@ export function portFreeWith(bind: Bind): (port: number) => boolean {
     });
 }
 
+/** A real bind, held exclusively: a shared bind could succeed on a busy port. */
 const listenOnce: Bind = (hostname, port) =>
-  Bun.listen({ hostname, port, socket: { data() {} } }).stop(true);
+  Bun.listen({
+    hostname,
+    port,
+    exclusive: true,
+    socket: { data() {} },
+  }).stop(true);
 
 /** True when nothing listens on `port` on loopback or either wildcard. */
 export const isPortFree = portFreeWith(listenOnce);
