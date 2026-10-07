@@ -39,7 +39,7 @@ export function EmailField({
           type="email"
           required
           autoComplete={autoComplete}
-          placeholder="you@school.edu"
+          placeholder="you@example.com"
           value={value}
           onChange={
             typeEmail && ((event) => typeEmail(event.currentTarget.value))

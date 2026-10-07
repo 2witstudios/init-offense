@@ -10,13 +10,13 @@ setupRitewayBun();
 
 const idle: SignInState = {
   step: 'enter-email',
-  email: 'jordan@lincoln.edu',
+  email: 'jordan@example.com',
   pending: 'none',
 };
 
 const inbox: SignInState = {
   step: 'check-inbox',
-  email: 'jordan@lincoln.edu',
+  email: 'jordan@example.com',
   sentAt: '2026-09-21T12:00:00.000Z',
   resending: false,
 };

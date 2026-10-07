@@ -101,7 +101,7 @@ const expiredFrame = (
     '<h1>This sign‑in link can no longer be used.</h1>' +
     noticeHtml(view.notice) +
     '<p class="af-lede">Links expire after 5 minutes and work once. Enter your email and we’ll send a new one.</p>' +
-    `<form class="af-form" method="post" action="${CONFIRM_PATH}">${hiddenInput('intent', 'resend')}${hiddenInputs(view.hidden)}<div class="af-field"><label for="email">Email</label><input class="af-input" id="email" name="email" type="email" autocomplete="email" placeholder="you@school.edu" required></div><button class="af-btn" type="submit">Email me a new link</button></form>` +
+    `<form class="af-form" method="post" action="${CONFIRM_PATH}">${hiddenInput('intent', 'resend')}${hiddenInputs(view.hidden)}<div class="af-field"><label for="email">Email</label><input class="af-input" id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required></div><button class="af-btn" type="submit">Email me a new link</button></form>` +
     `<div class="af-links"><a class="af-link" href="${escapeHtml(signInHref(view.hidden.callbackURL))}">Back to sign in</a><a class="af-link" href="${escapeHtml(view.hidden.callbackURL)}">Already signed in? Continue to ${BRAND}</a></div>`,
   footer: `Clicked the button twice? You’re probably already signed in. Use “Continue to ${BRAND}”.`,
   panel: EXPIRED_PANEL,
@@ -112,7 +112,7 @@ const sentFrame: AuthFrameContent = {
     '<p class="af-eyebrow">Link sent</p>' +
     '<h1>Check your inbox.</h1>' +
     `<p class="af-lede">If that address can sign in to ${BRAND}, a new link is on its way. It expires in 5 minutes.</p>` +
-    '<p class="af-why"><strong>School email?</strong> Filters can hold messages for a few minutes. Check spam or quarantine before requesting another.</p>' +
+    '<p class="af-why"><strong>Work email?</strong> Filters can hold messages for a few minutes. Check spam or quarantine before requesting another.</p>' +
     '<div class="af-links"><a class="af-link" href="/sign-in">Back to sign in</a></div>',
   footer: 'You can close this tab. The new link opens a fresh page.',
   panel: SENT_PANEL,

@@ -1,3 +1,4 @@
+import { appConfig } from '../../../app-config';
 import { Button } from '../../components/button/button';
 import { Icon } from '../../components/icon/icon';
 import { AuthFrame, AuthHeading, taglinePanel } from '../auth-frame/auth-frame';
@@ -57,7 +58,7 @@ export function SignInForm({
     <AuthFrame panel={taglinePanel}>
       <AuthHeading
         eyebrow="Sign in or create an account"
-        title="Take the floor."
+        title={`Welcome to ${appConfig.brand.displayName}.`}
       >
         Enter your email and we&apos;ll send you a link. Saved a passkey? Your
         browser will offer it.
