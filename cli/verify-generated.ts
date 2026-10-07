@@ -19,9 +19,9 @@ import { mkdirSync, openSync, closeSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { isPortFree } from '../scripts/port-probe';
 import { defaultDisplay } from './rename';
 import { runE2EStage } from './verify-e2e';
-import { isPortFree } from './wizard-io';
 
 /** `bun check` without `policy`, in its order. */
 export const STAGES = [

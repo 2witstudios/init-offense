@@ -1,5 +1,5 @@
 /** Fake `WizardDeps` for the wizard tests: records every effect. */
-import type { Captured, Prompt, WizardDeps } from './wizard-deps';
+import type { Captured, Prompt, Stopped, WizardDeps } from './wizard-deps';
 
 export type FakeOptions = {
   /** Probe results by joined command; unlisted probes succeed. */
@@ -8,6 +8,12 @@ export type FakeOptions = {
   readonly run?: (command: string) => number;
   readonly files?: Record<string, string>;
   readonly isPortFree?: (port: number) => boolean;
+  /** How the dev server ends; it exits 0 with no output by default. */
+  readonly start?: (command: string) => Stopped;
+  /** Whether the app ever answers HTTP; it does by default. */
+  readonly reachable?: boolean;
+  /** Whether Ctrl-C is pressed while interrupts are held. */
+  readonly interrupted?: boolean;
   readonly platform?: string;
   readonly prompt?: Partial<Prompt>;
 };
@@ -54,8 +60,8 @@ export function fakeDeps(options: FakeOptions = {}): Fake {
         return options.consent?.(line) ?? { code: 0, stdout: '' };
       },
       start: async (command) => {
-        record(command);
-        return 0;
+        const line = record(command);
+        return options.start?.(line) ?? { code: 0, output: '' };
       },
     },
     prompt: {
@@ -71,8 +77,8 @@ export function fakeDeps(options: FakeOptions = {}): Fake {
     cwd: '/work',
     isPortFree: options.isPortFree ?? (() => true),
     sleep: async () => {},
-    holdInterrupts: () => () => {},
-    reachable: async () => true,
+    holdInterrupts: () => () => options.interrupted ?? false,
+    reachable: async () => options.reachable ?? true,
     readFile: (path) => files[path] ?? null,
     writeFile: (path, text) => {
       files[path] = text;

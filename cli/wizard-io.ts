@@ -9,6 +9,7 @@ import { delimiter, dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { openInBrowser } from '../scripts/browser';
 import { consentFilter } from '../scripts/pagespace-consent';
+import { isPortFree } from '../scripts/port-probe';
 import {
   WizardStop,
   type Captured,
@@ -16,10 +17,15 @@ import {
   type Prompt,
   type RunOptions,
   type Runner,
+  type Stopped,
   type WizardDeps,
 } from './wizard-deps';
 
 const PROBE_TIMEOUT_MS = 20_000;
+/** How much of the dev server's output is kept to explain an early exit. */
+const OUTPUT_TAIL_CHARS = 16_384;
+/** How long output may keep draining after the dev server exits. */
+const DRAIN_GRACE_MS = 2_000;
 
 /** PATH with Bun's own directory and its global bin directory first. */
 const childPath = (): string =>
@@ -81,15 +87,34 @@ const runner: Runner = {
       child.on('close', (code) => finish(code ?? 1));
     }),
   start: (command, options) =>
-    new Promise((resolve) => {
+    new Promise<Stopped>((resolve) => {
       const [file = '', ...args] = command;
       const child = spawn(file, args, {
         cwd: options?.cwd,
-        env: childEnv(options),
-        stdio: 'inherit',
+        env: childEnv({
+          ...options,
+          env: { FORCE_COLOR: '1', ...options?.env },
+        }),
+        stdio: ['inherit', 'pipe', 'pipe'],
       });
-      child.on('error', () => resolve(127));
-      child.on('exit', (code) => resolve(code ?? 130));
+      let output = '';
+      const keep = (into: NodeJS.WriteStream) => (chunk: string) => {
+        into.write(chunk);
+        output = (output + chunk).slice(-OUTPUT_TAIL_CHARS);
+      };
+      child.stdout.setEncoding('utf8');
+      child.stdout.on('data', keep(process.stdout));
+      child.stderr.setEncoding('utf8');
+      child.stderr.on('data', keep(process.stderr));
+      const finish = (code: number | null) =>
+        resolve({ code: code ?? 130, output });
+      child.on('error', () => finish(127));
+      child.on('close', finish);
+      // 'close' waits for the pipes to drain; a grandchild still holding
+      // them must not keep the wizard waiting after the dev server exits.
+      child.on('exit', (code) =>
+        setTimeout(() => finish(code), DRAIN_GRACE_MS).unref(),
+      );
     }),
 };
 
@@ -186,28 +211,14 @@ const headlessPrompt: Prompt = {
   pause: async (message) => noTerminal(message),
 };
 
-/** True when nothing listens on `port` on the loopback interface. */
-export function isPortFree(port: number): boolean {
+/** True when `url` answers HTTP below 400: redirects count, errors do not. */
+export async function reachable(url: string): Promise<boolean> {
   try {
-    const listener = Bun.listen({
-      hostname: '127.0.0.1',
-      port,
-      socket: { data() {} },
-    });
-    listener.stop(true);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function reachable(url: string): Promise<boolean> {
-  try {
-    await fetch(url, {
+    const response = await fetch(url, {
       redirect: 'manual',
       signal: AbortSignal.timeout(5_000),
     });
-    return true;
+    return response.status < 400;
   } catch {
     return false;
   }
@@ -217,8 +228,6 @@ function open(url: string): void {
   openInBrowser(url);
   say(`  (opened ${url})`);
 }
-
-const ignoreInterrupt = () => {};
 
 export function realDeps(templateRoot: string): WizardDeps {
   const pinned = join(templateRoot, '.bun-version');
@@ -232,8 +241,15 @@ export function realDeps(templateRoot: string): WizardDeps {
     isPortFree,
     sleep: (ms) => Bun.sleep(ms),
     holdInterrupts: () => {
-      process.on('SIGINT', ignoreInterrupt);
-      return () => process.off('SIGINT', ignoreInterrupt);
+      let interrupted = false;
+      const hold = () => {
+        interrupted = true;
+      };
+      process.on('SIGINT', hold);
+      return () => {
+        process.off('SIGINT', hold);
+        return interrupted;
+      };
     },
     reachable,
     readFile: (path) => (existsSync(path) ? readFileSync(path, 'utf8') : null),

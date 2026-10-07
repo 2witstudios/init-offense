@@ -7,6 +7,9 @@ import { shown, type Command } from './wizard-plan';
 
 export type Captured = { readonly code: number; readonly stdout: string };
 
+/** How a long-running process ended: its code and the tail of its output. */
+export type Stopped = { readonly code: number; readonly output: string };
+
 export type RunOptions = {
   readonly cwd?: string;
   /** Extra environment for the child; values are never displayed. */
@@ -27,8 +30,11 @@ export type Runner = {
     command: Command,
     options?: RunOptions,
   ) => Promise<Captured>;
-  /** A long-running process attached to the terminal (the dev server). */
-  readonly start: (command: Command, options?: RunOptions) => Promise<number>;
+  /**
+   * A long-running process (the dev server): its output is shown as it
+   * comes, and its last few kilobytes are kept to explain an early exit.
+   */
+  readonly start: (command: Command, options?: RunOptions) => Promise<Stopped>;
 };
 
 export type Choice<T extends string> = {
@@ -63,10 +69,11 @@ export type WizardDeps = {
   readonly sleep: (ms: number) => Promise<void>;
   /**
    * Keeps Ctrl-C from killing the wizard itself (the child it is running
-   * still stops), so cleanup after it runs. Returns the release function.
+   * still stops), so cleanup after it runs. Returns the release function,
+   * which reports whether Ctrl-C was pressed while held.
    */
-  readonly holdInterrupts: () => () => void;
-  /** True once the server answers HTTP at `url`. */
+  readonly holdInterrupts: () => () => boolean;
+  /** True once the server answers HTTP below 400 at `url`. */
   readonly reachable: (url: string) => Promise<boolean>;
   readonly readFile: (path: string) => string | null;
   readonly writeFile: (path: string, text: string) => void;
