@@ -171,8 +171,11 @@ describe('CI browser installation', () => {
       ],
       { cwd: root, stdout: 'pipe', stderr: 'pipe' },
     );
+    const command = (step?.run ?? '').trim().split(/\s+/);
+    // Linux --with-deps dry-run inspects OS packages; revision planning
+    // must remain independent of host libraries. CI still installs them.
     const installer = Bun.spawnSync(
-      [...(step?.run ?? '').trim().split(/\s+/), '--dry-run'],
+      [...command.filter((arg) => arg !== '--with-deps'), '--dry-run'],
       {
         cwd: resolve(root, step?.['working-directory'] ?? '.'),
         stdout: 'pipe',
@@ -195,8 +198,9 @@ describe('CI browser installation', () => {
         installed.exitCode,
         locations(installer.stdout),
         locations(installed.stdout).length > 0,
+        command.includes('--with-deps'),
       ],
-      expected: [0, 0, locations(installed.stdout), true],
+      expected: [0, 0, locations(installed.stdout), true, true],
     });
   });
 });
