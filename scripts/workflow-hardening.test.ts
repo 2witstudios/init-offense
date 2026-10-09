@@ -1,5 +1,6 @@
 import { assert, describe, setupRitewayBun, test } from 'riteway/bun';
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 import {
   collectWorkflowHardeningProblems,
   workflowHardeningProblems,
@@ -135,6 +136,67 @@ describe('the repository workflows', () => {
       should: 'have no hardening problem',
       actual: collectWorkflowHardeningProblems(resolve(import.meta.dir, '..')),
       expected: [],
+    });
+  });
+});
+
+describe('CI browser installation', () => {
+  test('installs the browser revisions required by the workspace test runner', () => {
+    const root = resolve(import.meta.dir, '..');
+    const config = Bun.YAML.parse(
+      readFileSync(resolve(root, '.github/workflows/e2e.yml'), 'utf8'),
+    ) as {
+      jobs: {
+        e2e: {
+          steps: {
+            name?: string;
+            run?: string;
+            'working-directory'?: string;
+          }[];
+        };
+      };
+    };
+    const step = config.jobs.e2e.steps.find(
+      ({ name }) => name === 'Install Playwright browsers',
+    );
+    const installed = Bun.spawnSync(
+      [
+        'bun',
+        'apps/web/node_modules/@playwright/test/cli.js',
+        'install',
+        '--dry-run',
+        'chromium',
+        'firefox',
+        'webkit',
+      ],
+      { cwd: root, stdout: 'pipe', stderr: 'pipe' },
+    );
+    const installer = Bun.spawnSync(
+      [...(step?.run ?? '').trim().split(/\s+/), '--dry-run'],
+      {
+        cwd: resolve(root, step?.['working-directory'] ?? '.'),
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+    const locations = (output: Uint8Array) =>
+      new TextDecoder()
+        .decode(output)
+        .split('\n')
+        .filter((line) => line.includes('Install location:'))
+        .map((line) => line.trim())
+        .sort();
+    assert({
+      given: 'the actual CI installer command and frozen workspace test runner',
+      should:
+        'successfully plan the same nonempty browser installation paths without downloading browsers',
+      actual: [
+        installer.exitCode,
+        installed.exitCode,
+        locations(installer.stdout),
+        locations(installed.stdout).length > 0,
+      ],
+      expected: [0, 0, locations(installed.stdout), true],
     });
   });
 });

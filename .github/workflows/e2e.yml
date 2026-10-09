@@ -108,7 +108,22 @@ jobs:
           RESEND_WEBHOOK_SECRET: ci-isolation-sentinel-webhook-secret
 
       - name: Install Playwright browsers
-        run: bunx --bun playwright install --with-deps chromium firefox webkit
+        run: bun apps/web/node_modules/@playwright/test/cli.js install --with-deps chromium firefox webkit
+
+      - name: Verify installed browsers launch
+        working-directory: apps/web
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium, firefox, webkit } from '@playwright/test';
+          for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
+            const browser = await engine.launch({ headless: true });
+            try {
+              console.log(`${name}: browser launch PASS`);
+            } finally {
+              await browser.close();
+            }
+          }
+          JS
 
       - name: Run browser tests
         if: ${{ github.event_name != 'workflow_dispatch' }}
