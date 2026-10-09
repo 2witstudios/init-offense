@@ -26,7 +26,7 @@ describe('branch push versus main acceptance', () => {
       { destination: 'refs/heads/main', dirty: false, old: true, expected: 1 },
     ];
     const results = cases.map((candidate) => {
-      const cwd = mkdtempSync(join(tmpdir(), 'daisy-push-'));
+      const cwd = mkdtempSync(join(tmpdir(), 'pipeline-push-'));
       const run = (args: string[]) =>
         Bun.spawnSync(args, { cwd, stdout: 'pipe', stderr: 'pipe' });
       try {
