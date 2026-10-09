@@ -20,11 +20,13 @@ export const REVIEW_ENVIRONMENT = 'review-record';
 
 /**
  * Exactly what the App's installation token is used for, and nothing more.
- * review-record.yml mints the token with these same three permissions
+ * review-record.yml mints the token with these same explicit permissions
  * (`permission-*` on actions/create-github-app-token); minting fails if the
  * App lacks one, and any extra one would be unused authority.
  */
 const REVIEW_APP_PERMISSIONS = {
+  // SHA-bound comparison and tree modes used for documentation applicability.
+  contents: 'read',
   // scripts/review-record.ts: POST repos/{repo}/statuses/{sha} sets the
   // `review-record` commit status the ruleset requires from this App.
   statuses: 'write',

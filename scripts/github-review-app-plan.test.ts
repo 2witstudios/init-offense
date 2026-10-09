@@ -32,9 +32,10 @@ describe('buildManifest', () => {
     assert({
       given: 'the review-record App manifest',
       should:
-        'grant exactly statuses:write, pull_requests:read, issues:read and metadata:read',
+        'grant exactly statuses:write, pull_requests:read, issues:read, contents:read and metadata:read',
       actual: manifest.default_permissions,
       expected: {
+        contents: 'read',
         statuses: 'write',
         pull_requests: 'read',
         issues: 'read',
