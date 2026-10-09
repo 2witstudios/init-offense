@@ -40,9 +40,9 @@ handler logic yet beyond rejecting every connection.
 | `bun lint`                                                    | ESLint (incl. Tailwind token rules), `scripts/check-boundaries.ts`, and `scripts/check-styling.ts`                                                                                                                                   |
 | `bun format` / `bun format:check`                             | Prettier write / verify                                                                                                                                                                                                              |
 | `bun typecheck`                                               | `tsc --noEmit` per workspace (web runs `next typegen` first)                                                                                                                                                                         |
-| `bun check`                                                   | format:check + lint + policy + knip + duplication + invariants + evidence + typecheck + test + metrics + build — before pushing; needs network, `gh`                                                                                 |
+| `bun check`                                                   | format:check + lint + policy + knip + duplication + invariants + evidence + typecheck + test + metrics + build — completed main candidate; needs network, `gh`                                                                       |
 | `bun check:affected`                                          | Fast per-vertical inner loop: lint/prettier on changed files, boundaries, duplication, affected turbo graph                                                                                                                          |
-| `bun hooks:install`                                           | One-time opt-in: point `core.hooksPath` at `.githooks` so `git push` runs `bun check:affected`                                                                                                                                       |
+| `bun hooks:install`                                           | One-time opt-in: point `core.hooksPath` at `.githooks` branch snapshots allowed; main runs full `bun check` on clean exact HEAD                                                                                                      |
 | `bun migrations:check`                                        | Fail stray or orphaned migration files, a broken snapshot chain, or a branch that rewrites/edits/reorders shared migrations vs `origin/main` (ADR 0038)                                                                              |
 | `bun run duplication`                                         | Copy-paste tripwire (jscpd): fails on any clone absent from `.jscpd-baseline.json` (ADR 0026)                                                                                                                                        |
 | `bun evidence`                                                | Orphan-suite and CI-wiring audit: every test tier is claimed by a real runner                                                                                                                                                        |
@@ -255,33 +255,18 @@ and TypeScript project discovery. Open the main checkout, not the parent of
 bun hooks:install   # git config core.hooksPath .githooks
 ```
 
-After that every `git push` runs `bun check:affected` against `origin/main` (run `git fetch origin` if the
-base is missing) and aborts the push on failure. Agent sessions get the hook
-without opting in: `.env.agent` sets `core.hooksPath` for them.
+Branch pushes are allowed as provisional snapshots. The hook checks an exact clean
+candidate with full `bun check` only when pushing to `main`. Required GitHub main
+checks remain authoritative. Record failed/deferred branch checks and discharge
+applicable proof before main acceptance. Agent launchers retain this hook through
+`core.hooksPath`; installing it is not a branch-readiness approval.
 
-`bun check:affected` inspects the checked-out working tree, so the hook can
-only vouch for `HEAD`. It classifies every ref git reports for the push:
-
-| Pushed ref                                                       | Behavior                                             |
-| ---------------------------------------------------------------- | ---------------------------------------------------- |
-| Branch deletion                                                  | Allowed; nothing is sent                             |
-| Branch or tag (annotated tags are peeled) whose commit is `HEAD` | Verified; the check runs once per push               |
-| Commit already contained in a remote-tracking branch             | Allowed with a notice; nothing new is sent           |
-| Any other commit (non-checked-out branch, old unpushed tag)      | Push refused: check that ref out and push from there |
-
-One refused ref refuses the whole push, including multi-ref pushes. The check
-covers the working tree, so the hook prints a notice when uncommitted changes
-are present; commit or set them aside if you want the result to describe
-exactly the pushed commit.
-
-The hook deliberately runs the fast
-affected gate (changed-file lint/prettier, boundaries, the repo-wide
-duplication gate, affected typecheck/tests), not the full chain: run `bun check` yourself before opening a
-PR, and CI remains the enforcement of record. `core.hooksPath` lives in the
-repository's shared git config, so it also applies to every worktree of that
-clone; each worktree resolves `.githooks` against its own checkout. Undo with
-`git config --unset core.hooksPath`; bypass a single push deliberately with
-`git push --no-verify`. No hook manager (husky, lefthook) is used or wanted.
+`core.hooksPath` lives in the shared Git config and applies to every worktree;
+each resolves `.githooks` from its own checkout. The hook allows deletions and
+non-main refs. Any non-deletion main ref must resolve to the current clean HEAD,
+otherwise it refuses the push rather than claim proof for a different commit.
+Undo installation with `git config --unset core.hooksPath`. No hook manager is
+used. Main protection is enforced independently by GitHub.
 
 ## Conventions that save review time
 

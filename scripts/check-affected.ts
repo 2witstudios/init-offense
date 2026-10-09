@@ -161,7 +161,7 @@ export function formatAffectedReport(
   return [
     `Acme check:affected — ${changedFiles.length} changed file${changedFiles.length === 1 ? '' : 's'}`,
     ...results.map(({ name, ok }) => `${ok ? 'PASS' : 'FAIL'} ${name}`),
-    'bun check remains the pre-push gate; this loop skips knip, metrics, and build.',
+    'bun check remains the main acceptance gate; this loop skips knip, metrics, and build.',
     '',
   ].join('\n');
 }

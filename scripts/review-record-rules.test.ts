@@ -41,7 +41,7 @@ describe('review rules from project config', () => {
       ],
       expected: [
         'success',
-        'A no-findings verdict needs make integration PASS and a negative control in Gates run',
+        'Runtime or unclassified acceptance needs make integration PASS and a negative control in Gates run',
       ],
     });
   });

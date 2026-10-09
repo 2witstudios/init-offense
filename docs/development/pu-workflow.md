@@ -14,7 +14,7 @@ it.
   `.env.agent` and sets `AGENT_AUTONOMOUS=1`, so `gh` and `git push` act as
   the machine user over HTTPS, never with the owner's keyring token or SSH
   key. `bun doctor` fails if an autonomous session resolves to the owner.
-  Until the owner creates `.env.agent`, the launcher starts agents
+  Until the owner creates `.env.agent` (GRD-6.2), the launcher starts agents
   as the owner with a warning and `bun doctor` warns.
 
 ## Spawning and messaging
@@ -27,11 +27,8 @@ pu status | pu logs <agent> | pu attach <agent>
 pu kill --agent <agent> && pu clean
 ```
 
-A builder gets its own worktree. A reviewer reviews the PR's exact head
-SHA, preferably in its own worktree checked out detached at that SHA so the
-builder's later pushes cannot move it; joining the builder's worktree with
-`--worktree` is acceptable when that worktree is at the SHA. Either way the
-reviewer leaves the tree clean and removes a worktree it added. Run `bun install --frozen-lockfile` and `bun slot:up` in a
+A builder gets its own worktree. A reviewer joins the worktree it reviews
+with `--worktree`. Run `bun install --frozen-lockfile` and `bun slot:up` in a
 worktree when the work needs dependencies or services
 ([ADR 0034](../decisions/0034-shared-stack-slots.md)); agents decide that for
 themselves. Agents report to whoever spawned them, so the owner never relays
@@ -75,3 +72,18 @@ read-only research and review.
   `gh pr merge --auto --merge`, and only once the live `main` ruleset
   requires `review-record`, while the owner may merge any PR at any time.
 - Given direct single-agent work, should be allowed to proceed without `pu`.
+
+## Autonomous continuation
+
+A builder may spawn implementation children and independent reviewers within
+its owner-authorized outcome. Native `pu spawn`, `pu send`, `pu status` and
+`pu logs` are the workflow; no wrapper or parent acknowledgment is required.
+Code-writing children use separate worktrees. Reviewers read a stable candidate
+and report to the builder that spawned them; that builder resolves findings and
+continues. Reserve source holds for reviewers actually using a mutable worktree.
+
+Report substantial milestones, final delivery, real blockers and actual writer
+conflicts to the original parent. Routine board updates and intermediate check
+failures need no owner relay. Keep a durable continuation record across context
+handoffs. [The agent pipeline](agent-pipeline.md) defines provisional dependencies,
+deferred proof and the independent exact-candidate main acceptance boundary.

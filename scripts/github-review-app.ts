@@ -266,7 +266,7 @@ export async function setupReviewApp(
   const { repository } = input;
   if (!input.force && alreadySetUp(storedState(deps, repository))) {
     deps.log(
-      `review-record App already set up on ${repository} (${APP_ID_VARIABLE} and ${APP_KEY_SECRET} exist); nothing to do. Use --force to create a new App.`,
+      `review-record App already set up on ${repository} (${APP_ID_VARIABLE} and ${APP_KEY_SECRET} exist); stored id/key present. Existing installations also need Contents: read for exact-diff verification; the human App owner upgrades permissions in settings and approves the installation update (see review-record.md). No permissions changed here.`,
     );
     return 0;
   }
