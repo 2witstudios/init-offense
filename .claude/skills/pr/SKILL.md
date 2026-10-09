@@ -82,10 +82,11 @@ Criteria are the bullets above the "Related pages" block of each task page, quot
 ### 4 — Open or update
 
 openOrUpdate() {
-existing PR for the branch (`gh pr view --json number,isDraft`) => `gh pr edit <n> --body-file <file>`; when promoting a completed candidate from provisional draft, run `gh pr ready <n>` and verify `isDraft` is false. Keep incomplete work draft; ready-for-review does not assert main acceptance.
+existing PR for the branch (`gh pr view --json number,isDraft`) => `gh pr edit <n> --body-file <file>`.
 none => `gh pr create [--draft for provisional work] --base <default> --title "<conventional title>" --body-file <file>`
 Write the body to a scratch file whose name is unique to this branch (e.g. `<scratchpad>/pr-body-<branch with / replaced by ->.md`); a shared name let one agent publish another's body (PR #9 went up with PR #10's). Never inline multi-line bodies in the shell.
 Verify after writing: `gh pr view <n> --json body --jq .body` must equal the file (ignoring a trailing newline). A mismatch => rewrite it with `gh pr edit` and check again; never report a PR whose published body you did not verify.
+Only after the published body matches the file, when promoting a completed candidate from provisional draft, run `gh pr ready <n>` and verify `isDraft` is false. Keep incomplete work draft; ready-for-review does not assert main acceptance.
 Requesting the merge is not this skill's job. An autonomous agent requests it only with `gh pr merge --auto --merge`, and only where the repository's required review check is live (the live `main` ruleset requires `review-record`); otherwise it reports "ready for owner merge" to its parent. It never merges directly.
 }
 

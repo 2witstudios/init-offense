@@ -20,9 +20,21 @@ const workflow = Bun.YAML.parse(
   await Bun.file(
     new URL('../.github/workflows/review-record.yml', import.meta.url),
   ).text(),
-) as { jobs: Record<string, Job> };
+) as {
+  on: { pull_request_target: { branches?: string[] } };
+  jobs: Record<string, Job>;
+};
 
 describe('review-record before and after the App exists', () => {
+  test('limits automatic PR review to the protected main base branch', () => {
+    assert({
+      given: 'PR-target events with main-only review credentials',
+      should: 'trigger only for main without broadening environment access',
+      actual: workflow.on.pull_request_target.branches,
+      expected: ['main'],
+    });
+  });
+
   test('skips with a notice until the App id and key are configured, and enforces once they are', () => {
     assert({
       given: 'no App id or key, an id without its key, and both (GRD-6.2 done)',
