@@ -20,7 +20,7 @@
     Documentation Runs sheets, Review Queue; owned by the docs pipeline</code></pre>
 <h2>Status model</h2>
 <ul>
-<li>To Do = groomed and eligible · <strong>Ready = committed: selected for work now</strong> · In Progress → Blocked / In Review → Merged → Done.</li>
+<li>To Do = groomed and eligible · <strong>Ready = useful authorized branch work can proceed</strong> · In Progress → Blocked / In Review → Merged → Done.</li>
 <li>Status lives in the status field, never the title. Commitment is a status; nothing moves folders.</li>
 <li>Agents keep their own tasks current up to In Review. The merge workflow moves a merged task to <strong>Merged</strong>; Done is granted only from an independent review record, never by the agent that did the work.</li>
 <li>A parent can't complete while a child is open — status is the only progress marker.</li>
@@ -32,7 +32,7 @@
 <h2>Ceremonies — agent-run</h2>
 <ul>
 <li><strong>Daily standup</strong> — every active agent posts Yesterday / Today / Blockers to {{page:standup}}; the Scrum Master posts the digest and flags blockers.</li>
-<li><strong>Commitment</strong> — the Scrum Master or orchestrator grooms {{page:backlog}} candidates into epic leaves and sets the leaves selected for work now to <code>Ready</code>, posting the committed task IDs to {{page:epicUpdates}}. There is no timebox; only <code>Ready</code> leaves are claimed, and the epic plan in <code>Plans/&lt;Epic&gt;</code> holds dependencies and order.</li>
+<li><strong>Commitment</strong> — the Scrum Master or orchestrator grooms {{page:backlog}} candidates into epic leaves and sets the leaves selected for work now to <code>Ready</code>, posting the committed task IDs to {{page:epicUpdates}}. There is no timebox; agents can create and claim authorized leaves without a new approval relay, and the epic plan in <code>Plans/&lt;Epic&gt;</code> holds dependencies and order.</li>
 <li><strong>Review</strong> — an independent Reviewer proves each candidate's acceptance criteria with command output and publishes a review record in <code>Reviews/&lt;Epic&gt;</code>; Done is granted only from that record.</li>
 <li><strong>Retro</strong> — at phase or epic close; findings go in the closing review record and land as edits to this page or to {{page:agentMemory}}.</li>
 </ul>
@@ -51,3 +51,5 @@
 <li><strong>{{page:documentationAgent}}</strong> — maintains {{page:documentation}} (Canvas pages, Page Registry, Documentation Runs) from merge events per <code>docs/architecture/documentation-pipeline.md</code>; works the Review Queue.</li>
 </ul>
 <p>Durable environment facts and work logs live in {{page:agentMemory}} — ceremonies and channels never duplicate them. The orchestrator owns Agent Memory writes. The rules for plans, prompts, handoffs and reviews are {{page:conventions}}.</p>
+
+<p>Agents carry owner-authorized long-horizon outcomes through planning, tasking, provisional integration, independent reviews and fixes. Intermediate branch CI may fail or defer; record candidate SHA, check, reason, remaining work, responsible agent and discharge point. Main requires completed transitions and all applicable gates plus exact-head independent review. Coordinate actual concurrent writers and retain explicit human authority over production, identities, secrets and data.</p>

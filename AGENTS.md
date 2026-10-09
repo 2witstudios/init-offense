@@ -29,7 +29,7 @@ and detailed procedures in the linked documents, not here.
 - Parallel sessions, branches, and vertical ownership: [parallel work](docs/development/parallel-work.md).
 - Preferred multi-agent orchestration: [pu workflow](docs/development/pu-workflow.md).
 - Merges and the two operating modes: see "Two modes" below and [pu workflow](docs/development/pu-workflow.md).
-- New epics: the repository skill [epic-pipeline](.claude/skills/epic-pipeline/SKILL.md) (plan, automated plan review, owner approval, tasking, orchestration).
+- New epics: the repository skill [epic-pipeline](.claude/skills/epic-pipeline/SKILL.md) (authorized planning, independent review, tasking, orchestration).
 
 ## Starting a new project
 
@@ -40,6 +40,22 @@ GitHub App (`bun github:review-app`) and the manual steps that remain
 [README](README.md#quickstart). Until `bun drive:bootstrap` has run, every
 PageSpace-backed command refuses with a "not provisioned" error rather than
 guessing an id.
+
+## Branch autonomy and acceptance
+
+An owner instruction to implement an outcome authorizes planning, task
+administration, isolated experimentation, provisional unmerged integration,
+PurePoint delegation, independent reviews and fixes within that outcome. Do not
+turn routine branch work into repeated owner or parent approval. A planning-only
+request stays planning-only. Follow [the agent delivery pipeline](docs/development/agent-pipeline.md)
+for long-running execution, dependency evidence, check scheduling and review stages.
+
+Branches may contain incomplete transitions and temporary failing/deferred checks;
+record their reason, candidate, remaining work, responsible agent and discharge
+point. Coordinate actual concurrent writers and shared resources. Before main
+acceptance, complete the transition and all applicable checks, preserve architecture,
+security and migration integrity, and obtain independent exact-candidate review.
+Production identity, secrets, deployment and data actions retain human sign-off.
 
 ## Dependency rules
 
@@ -92,7 +108,8 @@ guessing an id.
   tests, and policy exceptions, and supersede the documenting ADR. Never
   accrete legacy modes, dual-shape validators, or migration replay fixtures
   for behavior nobody depends on (ADR 0023).
-- Transitions are total. Once we decide to replace an approach (a pipeline,
+- Transitions are total before main acceptance. During branch work, record
+  incomplete transitions and their remaining proof. Once we accept a decision to to replace an approach (a pipeline,
   integration, transport, or tool), replace it in one move: delete the old
   code path and its tests, config, CI steps, secrets, docs, and everything it
   created outside the repo (PageSpace workflows, webhooks, triggers, data
@@ -178,14 +195,14 @@ values in `.env`; initialize with `bun install --frozen-lockfile` and
   migration currency, Redis reachability, agent identity, and architecture
   boundaries. Add `--json` for a machine-readable report. It should pass
   before service-based work.
-- `bun check`: the pre-push gate: `format:check`, lint and boundaries, policy,
+- `bun check`: the full main-acceptance gate: `format:check`, lint and boundaries, policy,
   Knip, duplication, invariants, evidence, typecheck, unit tests, metrics policy, and
   production build. It does not boot Next or require integration services,
   but its policy stage lists open PRs for ADR and migration number claims,
   so it needs the network and an authenticated `gh` (`GH_TOKEN` in CI).
 - `bun check:affected`: fast per-vertical inner loop over changed files and
   the affected turbo graph. A convenience, never a substitute for `bun check`.
-  The committed `.githooks/pre-push` hook runs it on every push once a clone
+  The optional `.githooks/pre-push` hook permits branch snapshots and runs full `bun check` for an exact clean main candidate once a clone
   opts in with `bun hooks:install`; CI enforces the full gate.
 - `bun migrations:check`: fails a branch that rewrites, reorders, truncates,
   or chain-breaks shared migrations relative to `origin/main`. Required
@@ -268,12 +285,12 @@ conventions page.
 Drive: "Init Offense" (`j5rqt7l7ze1kg8gigt4xg2iq`) · conventions page "Task artifacts and linking" (`hdrmk39nj0smubsi7regdbza`)
 <!-- drive:end -->
 
-Work only on committed tasks: claim `Ready` leaves, advance In Progress to
+Record authorized work in tasks: claim or create `Ready` leaves, advance In Progress to
 In Review at handoff, and mark Done only when acceptance criteria are
 proven. Status belongs in the status field; task bodies are acceptance
 criteria (`Given X, should Y`). Plan and task epics with the `/task` skill
 (or the repository [epic-pipeline](.claude/skills/epic-pipeline/SKILL.md)
-skill for the full plan → review → approval → orchestration loop).
+skill for planning and delivery within existing owner authorization).
 
 PageSpace is the workspace, not only the board. Plans, prompts, handoffs and
 review records are task artifacts: they live in the drive's `Plans`,
@@ -321,8 +338,8 @@ task moves to **Merged** automatically and reaches Done only from an
 independent review record. Use `/triage` for review-comment triage.
 
 Parallel sessions follow [parallel work](docs/development/parallel-work.md):
-short-lived vertical branches, one open vertical per agent, and a deviation
-from the plan means updating the plan before declaring done. The
+short-lived vertical branches, one open vertical per agent, and execution refinements
+are recorded in the plan before declaring done. The
 orchestrator owns Agent Memory writes.
 Reviews use the [review record](docs/development/review-record.md) format.
 

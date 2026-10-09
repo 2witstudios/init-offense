@@ -1,16 +1,66 @@
 <h1>Orchestrator stage loop</h1>
-<p><em>Universal prompt. Reused across epics. It names no task, plan or PR.</em></p>
 <ol>
-<li><strong>Ground.</strong> Read the epic, its plan in <code>Plans/&lt;Epic&gt;</code>, the phase and leaf criteria, and the last review record. Reconcile the board with git before starting anything: <code>bun board:stale</code> lists tasks whose status disagrees with what merged. Then read the drive-root <strong>Issues</strong> list: any issue touching the files, package or phase about to be built goes into the stage prompt as a known debt the builder fixes while in that code.</li>
-<li><strong>Settle decisions before fan-out.</strong> A new epic runs through the <code>/task</code> skill: plan draft, independent plan review (<code>bun plan:review</code>; <code>--runner codex|claude|opencode</code> picks the reviewer), owner approval, tasking, validation. Take ADR and migration numbers from <code>bun adr:next</code>. Declare each leaf's prerequisites on a <code>Prerequisite:</code> line in its Related pages.</li>
-<li><strong>Commit.</strong> Work only on committed leaves: set them Ready on the board before anyone claims them, and post the committed task IDs and transitions to Epic Updates; CI posts merges to Sprint Room.</li>
-<li><strong>Prompt.</strong> Write the task prompt as a page in <code>Prompts/&lt;Epic&gt;</code>. It carries only what is specific: scope, candidate, criteria page mentions, what to read first, the file scope (allowed and forbidden paths), known hazards and known debts. It @-mentions the universal contract it uses (Builder or Reviewer). Universal prompts never link back.</li>
-<li><strong>Link.</strong> Add the prompt to the "Related pages" block of the phase and each leaf it covers (<code>bun board:relate</code>).</li>
-<li><strong>Spawn.</strong> Start each agent with the repository's spawn tooling, giving it only <code>pagespace pages read &lt;promptPageId&gt; — that page is your task</code>; a reviewer joins the builder's existing worktree. Refuse a builder whose prerequisites are unmerged or whose leaf uses a superseded term, unless the owner overrides. The spawner installs dependencies, brings the slot up, registers you as the parent and confirms the prompt was submitted. Never delegate code to worktree-isolated subagents; forks are for read-only research.</li>
-<li><strong>Track.</strong> Leaves move To Do → Ready → In Progress → In Review → Merged → Done. Agents keep their own tasks current up to In Review; the merge workflow moves merged tasks to Merged. Done is granted only from an independent review record, never by the agent that did the work.</li>
-<li><strong>Branches.</strong> Every agent works on its own worktree's <code>pu/&lt;name&gt;</code> branch, one open vertical per agent, and never commits in the main checkout, which stays on <code>main</code>. Stacked PRs are merge-commit clean: fix the lowest branch first, then rebase the ones above it.</li>
-<li><strong>Review and merge.</strong> Every PR gets an independent review record; its Candidate line mints the <code>review-record</code> check. The owner merges any PR whenever they choose, and the record may follow the merge. An autonomous agent never merges: it requests the merge with <code>gh pr merge --auto --merge</code> only after <code>gh api repos/{{repo}}/rules/branches/main --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context] | any(. == "review-record")'</code> prints <code>true</code>, and GitHub completes it only once every required check, review-record included, passes; otherwise the PR is reported "ready for owner merge". CHANGES REQUESTED goes back to the builder; at a third review pass on one leaf, stop and bring the open disagreement to the owner instead of starting another pass.</li>
-<li><strong>Loops.</strong> PR loops use {{page:convergeLoop}}. A loop agent that cannot truthfully finish escalates instead of spinning; you close or resume it.</li>
-<li><strong>Owner decisions.</strong> Criterion changes, scope cuts and human prerequisites belong to the owner. A decision you make on the owner's behalf is recorded with <code>bun decision:record</code> on the Pending decisions list, which notifies the owner and stays open until confirmed or overruled.</li>
-<li><strong>Close.</strong> On acceptance: leaves Done, the epic's delivery log in <code>Plans/&lt;Epic&gt;</code> updated, related-pages blocks complete, durable lessons written to Agent Memory. A phase or epic cannot close while any issue it produced is untriaged: each is promoted to a leaf, scheduled into a stage prompt, or deferred by the owner with a recorded reason.</li>
+  <li>
+    <strong>Ground.</strong> Read AGENTS.md, relevant product/architecture
+    rules, the requested outcome and existing work. The owner's implementation
+    instruction authorizes planning, tasking, spawning, review fixes and
+    continuation within that outcome. A planning-only request remains
+    planning-only.
+  </li>
+  <li>
+    <strong>Plan and track.</strong> Keep the full objective and one durable
+    delivery record in PageSpace. Read Issues touching the current work.
+    Maintain build inputs separately from main acceptance obligations; Ready
+    means useful branch progress is possible, not every prerequisite globally
+    Done. Agents may create/claim in-scope leaves and review tasks without
+    another permission. Preserve criteria and product intent.
+  </li>
+  <li>
+    <strong>Coordinate.</strong> Inspect native pu status and pu logs.
+    Coordinate actual concurrent file/resource mutations and migration
+    generation. Package boundaries and shared concepts alone do not force
+    serialization. Code-writing children get separate worktrees and prompts
+    naming their parent, scope, criteria, dependencies and protected exclusions.
+    Existing task/prompt records can be reused.
+  </li>
+  <li>
+    <strong>Build and integrate.</strong> Actual unmerged producer commits may
+    supply branch inputs. Pin source and integration SHAs, contracts, source
+    owners and gaps. Separate producer approval is not required before
+    provisional integration. Unavailable producers block dependent proof, not
+    independent work. Proposed product authority stays provisional.
+  </li>
+  <li>
+    <strong>Verify progressively.</strong> Run focused proof while behavior is
+    runnable and broader gates at integration milestones. Record failed/deferred
+    checks with candidate, reason, remaining work, responsible agent and
+    discharge point. Continue independent work; do not churn an unchanged known
+    blocker. Branch CI can be red. Full applicable checks must pass for main
+    acceptance.
+  </li>
+  <li>
+    <strong>Review and fix.</strong> Builders may spawn their own independent
+    reviewers with native pu spawn and resolve findings without parent
+    permission. Review stable snapshots; a mutable worktree hold lasts only
+    while a reviewer uses it. Branch-feedback records cannot mint acceptance. No
+    pass-count escalation; relevant delta review binds the final composed head.
+  </li>
+  <li>
+    <strong>Accept.</strong> Require completed transitions, reconciled
+    contracts/security, applicable gates, migration integrity and independent
+    exact-head review under main's required checks. Autonomous agents never
+    merge directly; request auto-merge only when the live main ruleset requires
+    review-record. Done comes from independent acceptance evidence, never a
+    builder's cherry-pick or branch push.
+  </li>
+  <li>
+    <strong>Continue or escalate.</strong> Use pu send for meaningful
+    milestones, final delivery, genuine blockers and actual writer conflicts. A
+    builder can resolve routine execution issues without awaiting an explicit
+    parent continuation. Preserve direct parent reporting and truthful delivery
+    checks; do not duplicate delivered reports merely to collect
+    acknowledgments. Changed product intent, scope cuts and human-only
+    identity/secret/deployment/data actions go to the owner. Continue unaffected
+    work and retain the original objective across context handoffs.
+  </li>
 </ol>

@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { documentationOnly } from './review-diff';
 /**
  * The review-record status. A PR's head SHA gets `review-record`
  * success only from a published independent review record for that exact
@@ -136,7 +137,7 @@ function gateLine(text: string, gate: RegExp): boolean {
   return lines
     .slice(start + 1, end === -1 ? undefined : end)
     .map(stripDecoration)
-    .some((line) => gate.test(line) && !/not run|\?/i.test(line));
+    .some((line) => gate.test(line) && !/not run|deferred|\?/i.test(line));
 }
 
 /** Why this record does not approve the PR; undefined when it does. */
@@ -158,12 +159,13 @@ function recordProblem(
     return `The record names builder ${named}; the PR declares ${builder}`;
   return reviewer === builder
     ? `The reviewer ${reviewer} is the builder of this PR`
-    : verdictProblem(text, integrationCommand);
+    : verdictProblem(text, integrationCommand, pr);
 }
 
 function verdictProblem(
   text: string,
   integrationCommand: string,
+  pr: PullRequest,
 ): string | undefined {
   const final = finalVerdict(text);
   if (!final)
@@ -172,17 +174,19 @@ function verdictProblem(
     return `The verdict is not an approval: ${final.verdict}`;
   if (final.blockers > 0 || final.majors > 0)
     return `The verdict approves with ${final.blockers} blocker and ${final.majors} major open`;
-  const clean = final.minors === 0 && final.nits === 0;
-  const evidenced =
-    gateLine(
-      text,
-      new RegExp(
-        String.raw`^${escapeRegExp(integrationCommand)}:\s*PASS\b(?!\?)`,
-      ),
-    ) && gateLine(text, /^Negative control run:\s*yes\b/i);
-  return clean && !evidenced
-    ? `A no-findings verdict needs ${integrationCommand} PASS and a negative control in Gates run`
-    : undefined;
+  const docs = documentationOnly(pr.diff, pr.headSha);
+  const evidence = docs
+    ? gateLine(text, /^Documentation review:\s*PASS\b/) &&
+      gateLine(text, /^bun check(?: at [0-9a-f]+)?:\s*PASS\b/)
+    : gateLine(
+        text,
+        new RegExp(String.raw`^${escapeRegExp(integrationCommand)}:\s*PASS\b`),
+      );
+  return evidence && gateLine(text, /^Negative control run:\s*yes\b/i)
+    ? undefined
+    : docs
+      ? 'Documentation acceptance needs bun check PASS, Documentation review PASS and a negative control in Gates run'
+      : `Runtime or unclassified acceptance needs ${integrationCommand} PASS and a negative control in Gates run`;
 }
 
 export function verifyReviewRecord(
@@ -198,11 +202,16 @@ export function verifyReviewRecord(
       state: 'failure',
       description: `Linked page ${missing} could not be read; review-record fails closed`,
     };
-  const forSha = records.filter(
-    (record) =>
-      record.title.includes(pr.headSha) ||
-      CANDIDATE.exec(plainText(record.content))?.[1] === pr.headSha,
-  );
+  const forSha = records.filter((record) => {
+    const text = plainText(record.content);
+    return (
+      !/^Review stage:\s*branch\s*$/m.test(
+        text.split(/^#{2,}\s|^Gates run\s*$/m)[0] ?? '',
+      ) &&
+      (record.title.includes(pr.headSha) ||
+        CANDIDATE.exec(text)?.[1] === pr.headSha)
+    );
+  });
   const [first] = forSha;
   if (!first)
     return {

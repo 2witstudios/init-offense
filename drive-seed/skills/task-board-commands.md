@@ -1,8 +1,6 @@
-Installed copies: ~/.claude/skills/task, ~/.codex/skills/task, ~/.config/opencode/skills/task. Upstream: pointguard skills/task/references/board-commands.md. This page is the drive's reference copy; edit upstream, then sync.
-
 # Board commands
 
-Exact `pagespace` recipes for the tasking, validate and sync stages. Where the repo has
+Administration recipes for authorized work; these commands do not grant or revoke branch authority. Where the repo has
 `bun board:*` ({{displayName}}), use the equivalent in the last column; it adds hash-checked writes.
 
 Every task is backed by its own TASK_LIST page (`pageId` in the create/list output). Its
@@ -67,3 +65,5 @@ Prerequisite (single-writer migrations): <a class="mention" data-mention-type="p
 
 Escape `&`, `<`, `>` and `"` in criteria and titles. Handoffs, PRs, reviews and follow-ups are
 appended to the same Related pages block later by /handoff, /pr and /review.
+
+Ready records useful authorized progress. Distinguish Build inputs from Accepts after; an unmerged pinned producer can be a build input. Keep status changes and proof obligations current without making them permission relays.
