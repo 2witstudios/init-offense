@@ -57,6 +57,13 @@ acceptance, complete the transition and all applicable checks, preserve architec
 security and migration integrity, and obtain independent exact-candidate review.
 Production identity, secrets, deployment and data actions retain human sign-off.
 
+Non-main integration authority is identical for owners, point guards, root and
+worktree agents in their own allocated receiving checkout/branch. Resolve the
+symbolic default and live protected targets, and validate the live PR base before
+merge automation. Main/default/protected release and production protections
+remain. See [branch integration](docs/development/agent-pipeline.md#receiving-branch-authority)
+for target checks, checkout isolation and provisional evidence.
+
 ## Dependency rules
 
 - Dependencies point inward: delivery and feature operations may call domain,
@@ -248,8 +255,8 @@ independent review record may follow the merge. Agents started by `pu` run
 autonomously (`AGENT_AUTONOMOUS=1`) under the agent machine identity from
 the main checkout's `.env.agent`, never the owner's token or SSH key
 (`bun doctor` checks it). Until the owner creates that file, agents act as
-the owner and `bun doctor` warns. An autonomous agent never merges. It
-requests a merge with `gh pr merge --auto --merge` only after confirming
+the owner and `bun doctor` warns. An autonomous agent never directly merges main, the symbolic default or
+protected release targets. For main it requests a merge with `gh pr merge --auto --merge` only after confirming
 the live `main` ruleset requires `review-record`; GitHub then merges only
 once every required check passes, including `review-record`, which only an
 independent review record for the exact head SHA can mint. Without that
