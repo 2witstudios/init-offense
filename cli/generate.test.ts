@@ -127,6 +127,36 @@ describe('generation from the real template', () => {
     });
   });
 
+  test('preserves integration authority across generated instructions and drive seeds', () => {
+    const files = [
+      ['.claude/skills/pr/SKILL.md', 'drive-seed/skills/pr.md'],
+      ['.claude/skills/handoff/SKILL.md', 'drive-seed/skills/handoff.md'],
+      ['.claude/skills/review/SKILL.md', 'drive-seed/skills/review.md'],
+    ];
+    assert({
+      given: 'a newly generated project with unprovisioned drive seeds',
+      should:
+        'ship identical role policies, allocated integration authority and protected acceptance',
+      actual: files.map(([skill, seed]) => {
+        const policy = readFileSync(join(target, skill!), 'utf8');
+        return {
+          parity: policy === readFileSync(join(target, seed!), 'utf8'),
+          allocated: policy.includes('own allocated unprotected'),
+          protected: policy.includes('main/default/protected release targets'),
+          liveBase: policy.includes('live repository/base/head'),
+          oldBan: /Autonomous agents never merge directly\./.test(policy),
+        };
+      }),
+      expected: files.map(() => ({
+        parity: true,
+        allocated: true,
+        protected: true,
+        liveBase: true,
+        oldBan: false,
+      })),
+    });
+  });
+
   test('AGENTS.md starts unprovisioned', () => {
     const agents = readFileSync(join(target, 'AGENTS.md'), 'utf8');
     assert({
